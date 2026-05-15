@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
+from flask_socketio import SocketIO
 from flask import Flask, render_template, request, jsonify
 import requests
 import datetime
 import google.generativeai as genai
 
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
 session = requests.Session()
-
 # =========================
 # GEMINI API
 # =========================
@@ -28,7 +28,7 @@ OLLAMA_MODELS = {
     "v6": "gemma2:9b-instruct-q4_K_M"
 }
 
-USE_API = True  # False yaparsan local Ollama çalışır
+USE_API = False  # False yaparsan local Ollama çalışır
 
 
 @app.route('/')
@@ -104,5 +104,9 @@ Kullanıcı: {user_message}
 
 
 if __name__ == "__main__":
-    print("ORHAN AI AKTİF")
-    app.run(host="0.0.0.0", port=80, debug=False)
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=10000,
+        allow_unsafe_werkzeug=True
+    )
