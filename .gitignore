@@ -1,0 +1,7 @@
+node_modules/
+game/dist/game.js
+android/assets/www/
+android/build/
+android/.smali_classpath
+*.log
+__pycache__/
