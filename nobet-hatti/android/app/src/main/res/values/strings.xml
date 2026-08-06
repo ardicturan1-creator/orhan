@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Nöbet Hattı</string>
+    <string name="title_activity_main">Nöbet Hattı</string>
+    <string name="package_name">com.bymel.nobethatti</string>
+    <string name="custom_url_scheme">com.bymel.nobethatti</string>
+</resources>

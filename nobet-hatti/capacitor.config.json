@@ -1,0 +1,12 @@
+{
+  "appId": "com.bymel.nobethatti",
+  "appName": "Nöbet Hattı",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
