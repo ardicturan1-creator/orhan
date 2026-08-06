@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#050817">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Neon Rift — Bymel Software</title>
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <canvas id="gameCanvas" aria-label="Neon Rift 3D oyun alanı"></canvas>
+
+  <section id="splash" class="screen splash active" aria-label="Açılış ekranı">
+    <div class="splash-mark" aria-hidden="true"><span></span><i></i></div>
+    <div class="studio">BYMEL <b>SOFTWARE</b></div>
+    <div class="splash-line"><span id="splashFill"></span></div>
+    <div id="bootStatus" class="micro">NEON ÇEKİRDEK BAŞLATILIYOR</div>
+  </section>
+
+  <main id="home" class="screen home" aria-label="Ana menü">
+    <header class="topbar">
+      <button class="profile-chip" id="profileButton" aria-label="Oyuncu profili">
+        <span class="avatar">B</span>
+        <span><small>RIFT PILOT</small><strong id="pilotLevel">SV. 1</strong></span>
+      </button>
+      <div class="wallet">
+        <button class="currency" id="goldButton"><span class="coin-icon">●</span><b id="homeGold">0</b><i>+</i></button>
+        <button class="currency" id="gemButton"><span class="gem-icon">◆</span><b id="homeGems">0</b><i>+</i></button>
+      </div>
+    </header>
+
+    <div class="home-copy">
+      <div class="eyebrow">SEZON 01 · NEON UYANIŞ</div>
+      <h1><span>NEON</span> RIFT</h1>
+      <p>Akışı kır. Titan’ı indir. Komutanı yen.</p>
+      <div class="record"><small>EN İYİ SKOR</small><b id="highScore">0</b></div>
+    </div>
+
+    <div class="hero-pedestal" aria-hidden="true"><span></span><i></i></div>
+
+    <nav class="side-actions" aria-label="Menü seçenekleri">
+      <button data-panel="missions"><span>✓</span><b>GÖREVLER</b><i id="missionBadge">3</i></button>
+      <button data-panel="armory"><span>⌁</span><b>GELİŞİM</b></button>
+      <button data-panel="shop"><span>◆</span><b>MAĞAZA</b></button>
+      <button data-panel="settings"><span>⚙</span><b>AYARLAR</b></button>
+    </nav>
+
+    <div class="play-zone">
+      <button id="playButton" class="play-button"><span>OYNA</span><small>TEK KİŞİLİK · SONSUZ</small></button>
+      <div class="daily-chip"><span>⚡</span><div><small>GÜNLÜK SERİ</small><b id="streakText">1. GÜN</b></div></div>
+    </div>
+    <footer class="home-footer"><span>v1.2.0</span><span>BYMEL SOFTWARE</span></footer>
+  </main>
+
+  <section id="hud" class="screen hud" aria-label="Oyun arayüzü">
+    <div class="hud-left">
+      <div class="health-shell"><span class="health-icon">+</span><div><i id="healthBar"></i><em id="shieldBar"></em></div><b id="healthText">100</b></div>
+      <div class="xp-shell"><div><i id="xpBar"></i></div><b id="levelText">SV. 1</b></div>
+      <div class="overdrive-shell"><small>RIFT OVERDRIVE</small><div><i id="overdriveBar"></i></div><b id="overdriveText">0%</b></div>
+    </div>
+    <div class="hud-center">
+      <small id="waveText">DALGA 1</small>
+      <b id="timerText">00:00</b>
+      <div id="bossBarWrap" class="boss-wrap"><span id="bossName">RIFT TITAN</span><div><i id="bossBar"></i></div></div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-stat"><span class="coin-icon">●</span><b id="runCoins">0</b></div>
+      <div class="hud-stat combo"><small>KOMBO</small><b id="comboText">x1</b></div>
+      <button id="pauseButton" class="icon-button" aria-label="Oyunu duraklat">Ⅱ</button>
+    </div>
+
+    <div id="joystick" class="joystick" aria-label="Hareket joystick'i"><i id="joystickKnob"></i></div>
+    <div class="combat-controls">
+      <button id="novaButton" class="skill-button nova" aria-label="Nova yeteneği"><span>✦</span><i id="novaCooldown"></i><small>NOVA</small></button>
+      <button id="dashButton" class="skill-button dash" aria-label="Atılma yeteneği"><span>»</span><i id="dashCooldown"></i><small>DASH</small></button>
+    </div>
+    <div id="objectiveToast" class="objective-toast">DALGA 1</div>
+    <div id="damageFlash" class="damage-flash"></div>
+  </section>
+
+  <section id="levelup" class="modal-layer" aria-label="Seviye yükseltme">
+    <div class="level-card modal-card">
+      <div class="eyebrow">RIFT ENERJİSİ SENİNLE</div>
+      <h2>SEVİYE <span id="newLevel">2</span></h2>
+      <p>Bir yükseltme seç</p>
+      <div id="upgradeChoices" class="upgrade-grid"></div>
+      <button id="rerollButton" class="reroll-button">↻ SEÇENEKLERİ YENİLE <span>1</span></button>
+    </div>
+  </section>
+
+  <section id="pause" class="modal-layer" aria-label="Duraklatma menüsü">
+    <div class="pause-card modal-card">
+      <div class="eyebrow">RIFT BEKLEMEDE</div>
+      <h2>DURAKLATILDI</h2>
+      <button id="resumeButton" class="primary">DEVAM ET</button>
+      <button id="restartButton" class="secondary">YENİDEN BAŞLAT</button>
+      <button id="quitButton" class="ghost danger">ANA MENÜ</button>
+    </div>
+  </section>
+
+  <section id="results" class="modal-layer" aria-label="Oyun sonucu">
+    <div class="results-card modal-card">
+      <div class="eyebrow" id="resultEyebrow">RIFT KAPANDI</div>
+      <h2 id="resultTitle">İYİ KOŞU!</h2>
+      <div class="result-score"><small>SKOR</small><b id="resultScore">0</b><em id="newRecord">YENİ REKOR</em></div>
+      <div class="result-grid">
+        <div><small>SÜRE</small><b id="resultTime">00:00</b></div>
+        <div><small>YOK EDİLEN</small><b id="resultKills">0</b></div>
+        <div><small>ALTIN</small><b id="resultCoins">0</b></div>
+        <div><small>DALGA</small><b id="resultWave">1</b></div>
+        <div><small>BOSS</small><b id="resultBosses">0</b></div>
+      </div>
+      <button id="resultReplay" class="primary">TEKRAR OYNA</button>
+      <button id="resultHome" class="ghost">ANA MENÜ</button>
+    </div>
+  </section>
+
+  <section id="panel" class="panel-layer" aria-label="Menü paneli">
+    <div class="panel-card">
+      <header><div><small id="panelKicker">RIFT MERKEZİ</small><h2 id="panelTitle">MAĞAZA</h2></div><button id="panelClose" class="close-button" aria-label="Kapat">×</button></header>
+      <div id="panelTabs" class="panel-tabs"></div>
+      <div id="panelBody" class="panel-body"></div>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" role="status"><span>✓</span><p></p></div>
+  <div id="fpsBadge" class="fps-badge">60 FPS</div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/billing.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
