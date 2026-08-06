@@ -1,5 +1,6 @@
 name: Build Nobet Hatti APK
 
+# Trigger nudge for workflow discovery.
 on:
   push:
     branches:
