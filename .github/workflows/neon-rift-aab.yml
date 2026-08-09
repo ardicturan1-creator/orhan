@@ -1,0 +1,171 @@
+name: Neon Rift AAB
+
+on:
+  workflow_dispatch:
+    inputs:
+      play_app_signing_sha256:
+        description: "Play Console > Uygulama imzalama > App signing key certificate SHA-256 (boş bırakılırsa uygulama cihazda bütünlük hatası verir)"
+        required: false
+        default: ""
+      purchase_verify_url:
+        description: "Satın alma doğrulama HTTPS adresi (boşsa release derlemesinde satın alma teslim edilmez)"
+        required: false
+        default: ""
+  push:
+    branches:
+      - claude/mobile-compatibility-fix-uyqy7a
+    paths:
+      - "NeonRift/**"
+      - ".github/workflows/neon-rift-aab.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: NeonRift
+
+    steps:
+      - name: Kaynağı al
+        uses: actions/checkout@v4
+
+      - name: JDK 17 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - name: Oyun testlerini çalıştır
+        run: |
+          npm test
+          npm run check
+
+      - name: İmzalama anahtarını hazırla
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYSTORE_PATH="$RUNNER_TEMP/bymel-release.jks"
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+            printf '%s' "$KEYSTORE_PASSWORD" > "$RUNNER_TEMP/store-password.txt"
+            printf '%s' "$KEY_PASSWORD" > "$RUNNER_TEMP/key-password.txt"
+            printf '%s' "$KEY_ALIAS" > "$RUNNER_TEMP/key-alias.txt"
+          else
+            # Depoda anahtar tanımlı değilse tek seferlik bir yükleme anahtarı üretilir.
+            # Bu anahtar iş akışı çıktısı olarak indirilebilir ve GÜNCELLEMELER İÇİN SAKLANMALIDIR.
+            GENERATED_PASSWORD="$(openssl rand -hex 24)"
+            echo "::add-mask::$GENERATED_PASSWORD"
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE_PATH" \
+              -alias bymel \
+              -keyalg RSA -keysize 4096 -validity 10000 \
+              -storetype PKCS12 \
+              -storepass "$GENERATED_PASSWORD" \
+              -keypass "$GENERATED_PASSWORD" \
+              -dname "CN=Bymel Software, OU=Neon Rift, O=Bymel Software, L=Istanbul, C=TR"
+            echo "generated=true" >> "$GITHUB_OUTPUT"
+            printf '%s' "$GENERATED_PASSWORD" > "$RUNNER_TEMP/store-password.txt"
+            printf '%s' "$GENERATED_PASSWORD" > "$RUNNER_TEMP/key-password.txt"
+            printf '%s' "bymel" > "$RUNNER_TEMP/key-alias.txt"
+            printf '%s\n' "$GENERATED_PASSWORD" > "$RUNNER_TEMP/keystore-password.txt"
+          fi
+          echo "path=$KEYSTORE_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: gradlew çalıştırılabilir olsun
+        run: chmod +x android/gradlew
+
+      - name: Debug APK derle
+        working-directory: NeonRift/android
+        run: ./gradlew --no-daemon clean assembleDebug
+
+      - name: Release AAB derle
+        working-directory: NeonRift/android
+        env:
+          BYMEL_KEYSTORE_FILE: ${{ steps.keystore.outputs.path }}
+          PIN: ${{ github.event.inputs.play_app_signing_sha256 }}
+          VERIFY_URL: ${{ github.event.inputs.purchase_verify_url }}
+          SECRET_PIN: ${{ secrets.PLAY_APP_SIGNING_SHA256 }}
+          SECRET_VERIFY_URL: ${{ secrets.PURCHASE_VERIFY_URL }}
+        run: |
+          set -euo pipefail
+          BYMEL_KEYSTORE_PASSWORD="$(cat "$RUNNER_TEMP/store-password.txt")"
+          BYMEL_KEY_PASSWORD="$(cat "$RUNNER_TEMP/key-password.txt")"
+          BYMEL_KEY_ALIAS="$(cat "$RUNNER_TEMP/key-alias.txt")"
+          export BYMEL_KEYSTORE_PASSWORD BYMEL_KEY_PASSWORD BYMEL_KEY_ALIAS
+
+          EFFECTIVE_PIN="${PIN:-}"
+          [ -z "$EFFECTIVE_PIN" ] && EFFECTIVE_PIN="${SECRET_PIN:-}"
+          EFFECTIVE_URL="${VERIFY_URL:-}"
+          [ -z "$EFFECTIVE_URL" ] && EFFECTIVE_URL="${SECRET_VERIFY_URL:-}"
+
+          ARGS=(--no-daemon bundleRelease "-PPURCHASE_VERIFY_URL=$EFFECTIVE_URL")
+          NORMALIZED="$(printf '%s' "$EFFECTIVE_PIN" | tr -cd 'A-Fa-f0-9')"
+          if [ "${#NORMALIZED}" -eq 64 ]; then
+            ARGS+=("-PBYMEL_SIGNING_CERT_SHA256=$NORMALIZED")
+          else
+            echo "::warning::Play uygulama imzalama sertifikası girilmedi; AAB derlenecek ama uygulama cihazda 'SIGNATURE_PIN_MISSING' hatası verecek."
+            ARGS+=("-PALLOW_UNPINNED_RELEASE=true")
+          fi
+          ./gradlew "${ARGS[@]}"
+
+      - name: Yükleme sertifikası parmak izini yazdır
+        env:
+          KEYSTORE_PATH: ${{ steps.keystore.outputs.path }}
+        run: |
+          set -euo pipefail
+          keytool -list -v \
+            -keystore "$KEYSTORE_PATH" \
+            -alias "$(cat "$RUNNER_TEMP/key-alias.txt")" \
+            -storepass "$(cat "$RUNNER_TEMP/store-password.txt")" | grep -A1 "SHA256:" || true
+
+      - name: AAB çıktısını yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-rift-release-aab
+          path: NeonRift/android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Debug APK çıktısını yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-rift-debug-apk
+          path: NeonRift/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Üretilen imzalama anahtarını yükle
+        if: steps.keystore.outputs.generated == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SAKLA-imzalama-anahtari
+          path: |
+            ${{ runner.temp }}/bymel-release.jks
+            ${{ runner.temp }}/keystore-password.txt
+          if-no-files-found: error
+
+      - name: Özet
+        if: always()
+        run: |
+          {
+            echo "## Neon Rift derleme özeti"
+            echo ""
+            echo "- AAB: \`neon-rift-release-aab\` çıktısını indirin, Play Console'a bu dosyayı yükleyin."
+            echo "- Debug APK: \`neon-rift-debug-apk\` çıktısı telefona doğrudan kurulabilir."
+            if [ "${{ steps.keystore.outputs.generated }}" = "true" ]; then
+              echo "- **Bu derlemede yeni bir imzalama anahtarı üretildi.** \`SAKLA-imzalama-anahtari\` çıktısını indirip güvenli bir yerde saklayın; kaybederseniz uygulamayı bir daha güncelleyemezsiniz."
+              echo "- Kalıcı kullanım için anahtarı depo gizli anahtarlarına ekleyin: \`KEYSTORE_BASE64\`, \`KEYSTORE_PASSWORD\`, \`KEY_ALIAS\`, \`KEY_PASSWORD\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
