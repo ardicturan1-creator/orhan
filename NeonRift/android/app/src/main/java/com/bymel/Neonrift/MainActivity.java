@@ -33,6 +33,7 @@ public final class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (!BuildConfig.DEBUG) getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        applyDisplayCutoutMode();
         applyImmersiveMode();
 
         IntegrityGuard.Result integrity = IntegrityGuard.assess(this);
@@ -115,6 +116,15 @@ public final class MainActivity extends Activity {
         message.setPadding(48, 48, 48, 48);
         message.setText("NEON RIFT\n\nUygulama bütünlüğü doğrulanamadı.\nKod: " + code + "\n\nResmî ve değiştirilmemiş sürümü yükleyin.");
         setContentView(message);
+    }
+
+    // Çentikli/delikli ekranlarda oyun alanının kesilmemesi için pencere çentiğin altına da uzatılır.
+    // Bu ayar yalnızca pencere özniteliği olarak vardır; manifest içinde karşılığı yoktur.
+    private void applyDisplayCutoutMode() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return;
+        WindowManager.LayoutParams attributes = getWindow().getAttributes();
+        attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        getWindow().setAttributes(attributes);
     }
 
     @SuppressWarnings("deprecation")

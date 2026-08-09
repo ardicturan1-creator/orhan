@@ -25,7 +25,6 @@
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
             android:exported="true"
             android:launchMode="singleTask"
-            android:layoutInDisplayCutoutMode="shortEdges"
             android:resizeableActivity="true"
             android:screenOrientation="sensorLandscape">
             <intent-filter>
