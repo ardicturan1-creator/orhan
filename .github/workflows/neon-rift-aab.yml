@@ -65,8 +65,9 @@ jobs:
             printf '%s' "$KEY_PASSWORD" > "$RUNNER_TEMP/key-password.txt"
             printf '%s' "$KEY_ALIAS" > "$RUNNER_TEMP/key-alias.txt"
           else
-            # Depoda anahtar tanımlı değilse tek seferlik bir yükleme anahtarı üretilir.
-            # Bu anahtar iş akışı çıktısı olarak indirilebilir ve GÜNCELLEMELER İÇİN SAKLANMALIDIR.
+            # Depoda anahtar tanımlı değilse yalnızca derlemeyi doğrulamak için tek kullanımlık
+            # bir anahtar üretilir. Bu anahtar hiçbir yere yüklenmez ve iş bitince kaybolur;
+            # bu anahtarla imzalanan çıktı Play'e YÜKLENMEMELİDİR.
             GENERATED_PASSWORD="$(openssl rand -hex 24)"
             echo "::add-mask::$GENERATED_PASSWORD"
             keytool -genkeypair -v \
@@ -81,7 +82,6 @@ jobs:
             printf '%s' "$GENERATED_PASSWORD" > "$RUNNER_TEMP/store-password.txt"
             printf '%s' "$GENERATED_PASSWORD" > "$RUNNER_TEMP/key-password.txt"
             printf '%s' "bymel" > "$RUNNER_TEMP/key-alias.txt"
-            printf '%s\n' "$GENERATED_PASSWORD" > "$RUNNER_TEMP/keystore-password.txt"
           fi
           echo "path=$KEYSTORE_PATH" >> "$GITHUB_OUTPUT"
 
@@ -146,26 +146,23 @@ jobs:
           path: NeonRift/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Üretilen imzalama anahtarını yükle
-        if: steps.keystore.outputs.generated == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: SAKLA-imzalama-anahtari
-          path: |
-            ${{ runner.temp }}/bymel-release.jks
-            ${{ runner.temp }}/keystore-password.txt
-          if-no-files-found: error
-
       - name: Çıktıları depoya işle
         working-directory: .
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp NeonRift/android/app/build/outputs/bundle/release/*.aab dist/neon-rift-release.aab
+          if [ "${{ steps.keystore.outputs.generated }}" = "true" ]; then
+            AAB_NAME="neon-rift-TEST-imzali.aab"
+            rm -f dist/neon-rift-release.aab
+          else
+            AAB_NAME="neon-rift-release.aab"
+            rm -f dist/neon-rift-TEST-imzali.aab
+          fi
+          cp NeonRift/android/app/build/outputs/bundle/release/*.aab "dist/$AAB_NAME"
           cp NeonRift/android/app/build/outputs/apk/debug/*.apk dist/neon-rift-debug.apk
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dist/neon-rift-release.aab dist/neon-rift-debug.apk
+          git add -A dist
           if git diff --cached --quiet; then
             echo "Çıktılar değişmedi, işlenecek bir şey yok."
             exit 0
@@ -182,7 +179,7 @@ jobs:
             echo "- AAB: \`neon-rift-release-aab\` çıktısını indirin, Play Console'a bu dosyayı yükleyin."
             echo "- Debug APK: \`neon-rift-debug-apk\` çıktısı telefona doğrudan kurulabilir."
             if [ "${{ steps.keystore.outputs.generated }}" = "true" ]; then
-              echo "- **Bu derlemede yeni bir imzalama anahtarı üretildi.** \`SAKLA-imzalama-anahtari\` çıktısını indirip güvenli bir yerde saklayın; kaybederseniz uygulamayı bir daha güncelleyemezsiniz."
-              echo "- Kalıcı kullanım için anahtarı depo gizli anahtarlarına ekleyin: \`KEYSTORE_BASE64\`, \`KEYSTORE_PASSWORD\`, \`KEY_ALIAS\`, \`KEY_PASSWORD\`."
+              echo "- **UYARI:** Depoda imzalama anahtarı tanımlı olmadığı için çıktı tek kullanımlık bir anahtarla imzalandı ve \`TEST-imzali\` olarak adlandırıldı. **Play Console'a yüklemeyin** — o anahtar bu iş bitince kayboldu, uygulamayı bir daha güncelleyemezsiniz."
+              echo "- Yayına hazır AAB için kendi anahtarınızı üretip depo gizli anahtarlarına ekleyin: \`KEYSTORE_BASE64\`, \`KEYSTORE_PASSWORD\`, \`KEY_ALIAS\`, \`KEY_PASSWORD\` (adımlar: NeonRift/AAB_NASIL_ALINIR.md)."
             fi
           } >> "$GITHUB_STEP_SUMMARY"

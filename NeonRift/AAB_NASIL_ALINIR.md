@@ -17,30 +17,37 @@ Derleme bitince sayfanın altındaki **Artifacts** bölümünden indirin:
 
 | Çıktı | Ne işe yarar |
 | --- | --- |
-| `neon-rift-release-aab` | Play Console'a yüklenecek `.aab` dosyası |
+| `neon-rift-release-aab` | `.aab` dosyası — adı `TEST-imzali` ise Play'e yüklemeyin |
 | `neon-rift-debug-apk` | Telefona doğrudan kurup test edebileceğiniz `.apk` |
-| `SAKLA-imzalama-anahtari` | Depoda anahtar tanımlı değilse üretilen imzalama anahtarı |
 
-## 2. İmzalama anahtarını saklayın (önemli)
+Aynı dosyalar her başarılı derlemede depodaki `dist/` klasörüne de yazılır.
 
-Depoda imzalama anahtarı tanımlı değilse iş akışı otomatik bir tane üretir ve
-`SAKLA-imzalama-anahtari` çıktısı olarak verir. **Bu dosyayı kaybederseniz uygulamayı bir daha
-güncelleyemezsiniz.** Kalıcı hale getirmek için:
+## 2. Yayın için kendi imzalama anahtarınızı ekleyin (önemli)
+
+Depoda imzalama anahtarı tanımlı değilse iş akışı sadece derlemeyi doğrulamak için tek
+kullanımlık bir anahtar üretir, çıktıyı `TEST-imzali` diye adlandırır ve o anahtarı hiçbir yere
+kaydetmez. **Bu dosyayı Play Console'a yüklemeyin**: Play ilk yüklediğiniz anahtarı yükleme
+anahtarınız olarak kaydeder, o anahtar kaybolduğu için uygulamayı bir daha güncelleyemezsiniz.
+
+Yayına hazır AAB için kendi anahtarınızı kendi bilgisayarınızda üretin:
 
 ```bash
+keytool -genkeypair -v -keystore bymel-release.jks -alias bymel \
+  -keyalg RSA -keysize 4096 -validity 10000 -storetype PKCS12
 base64 -w0 bymel-release.jks > keystore.txt
 ```
 
-Sonra depoda **Settings → Secrets and variables → Actions → New repository secret** ile şunları ekleyin:
+`bymel-release.jks` dosyasını yedekleyin ve **asla depoya koymayın** (bu depo herkese açık).
+Sonra **Settings → Secrets and variables → Actions → New repository secret** ile şunları ekleyin:
 
 | Secret adı | Değer |
 | --- | --- |
 | `KEYSTORE_BASE64` | `keystore.txt` içeriği |
-| `KEYSTORE_PASSWORD` | `keystore-password.txt` içindeki şifre |
+| `KEYSTORE_PASSWORD` | keystore şifresi |
 | `KEY_ALIAS` | `bymel` |
-| `KEY_PASSWORD` | `keystore-password.txt` içindeki şifre |
+| `KEY_PASSWORD` | anahtar şifresi |
 
-Bunlar tanımlandıktan sonra her derleme aynı anahtarla imzalanır ve yeni anahtar üretilmez.
+Bunlar tanımlandıktan sonra çıktı `neon-rift-release.aab` adıyla ve hep aynı anahtarla imzalanır.
 
 ## 3. Bütünlük sabitlemesi (uygulamanın telefonda açılması için şart)
 
