@@ -1,0 +1,80 @@
+plugins {
+    id 'com.android.application'
+}
+
+
+def verifyUrl = providers.gradleProperty('PURCHASE_VERIFY_URL').getOrElse('')
+// Sunucu doğrulaması yalnızca gerçek bir HTTPS uç noktası tanımlıysa zorunlu tutulur.
+// Uç nokta boşken teslimat Google Play'in kendi satın alma sonucuna göre yapılır;
+// aksi halde ödeme alınır ama içerik hiç teslim edilmez.
+def requireServerVerification = verifyUrl.startsWith('https://')
+
+def admobInterstitialUnitId = providers.gradleProperty('ADMOB_INTERSTITIAL_UNIT_ID')
+        .getOrElse('ca-app-pub-4125240213199221/9294766589')
+def admobRewardedUnitId = providers.gradleProperty('ADMOB_REWARDED_UNIT_ID')
+        .getOrElse('ca-app-pub-4125240213199221/4071074074')
+
+android {
+    namespace 'com.bymel.Neonrift'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.bymel.Neonrift'
+        minSdk 23
+        targetSdk 36
+        versionCode 15
+        versionName '1.4.0'
+        buildConfigField 'String', 'PURCHASE_VERIFY_URL', '"' + verifyUrl.replace('"', '\\"') + '"'
+        buildConfigField 'String', 'ADMOB_INTERSTITIAL_UNIT_ID', '"' + admobInterstitialUnitId + '"'
+        buildConfigField 'String', 'ADMOB_REWARDED_UNIT_ID', '"' + admobRewardedUnitId + '"'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    signingConfigs {
+        if (System.getenv('BYMEL_KEYSTORE_FILE')) {
+            release {
+                storeFile file(System.getenv('BYMEL_KEYSTORE_FILE'))
+                storePassword System.getenv('BYMEL_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('BYMEL_KEY_ALIAS')
+                keyPassword System.getenv('BYMEL_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            buildConfigField 'boolean', 'REQUIRE_SERVER_VERIFICATION', 'false'
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            debuggable false
+            jniDebuggable false
+            buildConfigField 'boolean', 'REQUIRE_SERVER_VERIFICATION', requireServerVerification.toString()
+            if (signingConfigs.findByName('release') != null) signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main.assets.srcDirs = ['src/main/assets', '../../game']
+    }
+
+    packaging {
+        resources.excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*']
+    }
+}
+
+dependencies {
+    implementation 'com.android.billingclient:billing:9.1.0'
+    implementation 'com.google.android.gms:play-services-ads:24.6.0'
+}

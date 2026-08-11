@@ -1,0 +1,97 @@
+name: Neon Rift release AAB
+
+# İmzalı release AAB üretir. Çalıştırmak için şu depo sırları gereklidir
+# (Settings -> Secrets and variables -> Actions -> New repository secret):
+#
+#   BYMEL_KEYSTORE_BASE64    -> base64 -w0 bymel-release.jks çıktısı
+#   BYMEL_KEYSTORE_PASSWORD  -> keystore şifresi
+#   BYMEL_KEY_ALIAS          -> anahtar takma adı (ör. bymel)
+#   BYMEL_KEY_PASSWORD       -> anahtar şifresi
+#
+# Sırlar tanımlı değilse iş akışı imzasız AAB üretir ve bunu açıkça bildirir.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/game-admob-integration-t446fv
+    paths:
+      - 'neon-rift/**'
+      - '.github/workflows/android-release.yml'
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Kaynağı al
+        uses: actions/checkout@v4
+
+      - name: JDK 17 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+
+      - name: Gradle önbelleği
+        uses: actions/setup-gradle@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Kaynak testlerini çalıştır
+        working-directory: neon-rift
+        run: npm test
+
+      - name: Keystore'u çöz
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.BYMEL_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::BYMEL_KEYSTORE_BASE64 sırrı tanımlı değil; imzasız AAB üretilecek."
+          else
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/bymel-release.jks"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Release AAB derle
+        working-directory: neon-rift/android
+        env:
+          BYMEL_KEYSTORE_FILE: ${{ steps.keystore.outputs.signed == 'true' && format('{0}/bymel-release.jks', runner.temp) || '' }}
+          BYMEL_KEYSTORE_PASSWORD: ${{ secrets.BYMEL_KEYSTORE_PASSWORD }}
+          BYMEL_KEY_ALIAS: ${{ secrets.BYMEL_KEY_ALIAS }}
+          BYMEL_KEY_PASSWORD: ${{ secrets.BYMEL_KEY_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon clean bundleRelease
+
+      - name: İmzayı doğrula
+        if: steps.keystore.outputs.signed == 'true'
+        working-directory: neon-rift/android
+        run: |
+          BUNDLE=app/build/outputs/bundle/release/app-release.aab
+          # AAB imzası jarsigner ile doğrulanır; APK'daki apksigner AAB'yi desteklemez.
+          jarsigner -verify -verbose:summary "$BUNDLE" | tail -5
+
+      - name: AAB'yi yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-rift-release-aab
+          path: neon-rift/android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Eşleme dosyalarını yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-rift-release-mapping
+          path: neon-rift/android/app/build/outputs/mapping/release/
+          if-no-files-found: warn
+          retention-days: 30
