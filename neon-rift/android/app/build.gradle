@@ -25,8 +25,9 @@ android {
         applicationId 'com.bymel.neonrift'
         minSdk 23
         targetSdk 36
-        versionCode 15
-        versionName '1.4.0'
+        // Play Console'a daha önce 20'ye kadar yükleme denendi; yeni sürüm bunun üstünde olmalı.
+        versionCode 21
+        versionName '1.4.2'
         buildConfigField 'String', 'PURCHASE_VERIFY_URL', '"' + verifyUrl.replace('"', '\\"') + '"'
         buildConfigField 'String', 'ADMOB_INTERSTITIAL_UNIT_ID', '"' + admobInterstitialUnitId + '"'
         buildConfigField 'String', 'ADMOB_REWARDED_UNIT_ID', '"' + admobRewardedUnitId + '"'

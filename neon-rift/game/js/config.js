@@ -5,7 +5,7 @@
     appName: 'Neon Rift',
     studio: 'Bymel Software',
     packageName: 'com.bymel.neonrift',
-    version: '1.4.0',
+    version: '1.4.2',
     saveKey: 'bymel.neonrift.save.v2',
     legacySaveKeys: Object.freeze(['bymel.neonrift.save.v1']),
     minAndroidApi: 23,

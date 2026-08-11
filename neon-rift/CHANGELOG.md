@@ -1,5 +1,13 @@
 # Değişiklik günlüğü
 
+## 1.4.2
+
+- Yalnızca sürüm numarası yükseltmesi; oyun kodu ve yapılandırması değişmedi.
+- `versionCode` 15 → **21**, `versionName` 1.4.0 → **1.4.2**.
+  Play Console'a daha önce 20'ye kadar yükleme denendiği için 15 ile yüklenen paket
+  "sürüme dahil edilmiyor" hatası veriyordu; yeni değer mevcut en yüksek koddan büyüktür.
+- `config.js`, `index.html` ve `package.json` içindeki sürüm etiketleri hizalandı.
+
 ## 1.4.0
 
 - **Anti-kurcalama kontrolü kaldırıldı.** `IntegrityGuard` sınıfı ve onu çağıran tüm kod silindi:

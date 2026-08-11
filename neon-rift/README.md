@@ -1,6 +1,11 @@
-# Neon Rift — Bymel Software v1.4.0
+# Neon Rift — Bymel Software v1.4.2
 
 Neon Rift, Android için hazırlanmış Three.js tabanlı 3D arena-survivor oyunudur. Oyuncu hareket ederken en yakın hedefe otomatik ateş eder; Dash, Nova, Rift Overdrive ve koşu içi yükseltmelerle giderek zorlaşan dalgalarda ilerler.
+
+## v1.4.2 ile değişenler
+
+- Yalnızca sürüm yükseltmesi: `versionCode` **21**, `versionName` **1.4.2**.
+  Play Console'a daha önce 20'ye kadar yükleme denendiğinden 15 kabul edilmiyordu.
 
 ## v1.4.0 ile değişenler
 

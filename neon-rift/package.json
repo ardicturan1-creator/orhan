@@ -1,6 +1,6 @@
 {
   "name": "neon-rift-bymel",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "private": true,
   "description": "Bymel Software için mobil odaklı 3D arena-survivor oyunu",
   "scripts": {
