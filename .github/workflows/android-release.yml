@@ -22,6 +22,8 @@ on:
 jobs:
   bundle:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Kaynağı al
@@ -79,6 +81,32 @@ jobs:
           BUNDLE=app/build/outputs/bundle/release/app-release.aab
           # AAB imzası jarsigner ile doğrulanır; APK'daki apksigner AAB'yi desteklemez.
           jarsigner -verify -verbose:summary "$BUNDLE" | tail -5
+
+      # Artefakt indirme yalnızca web arayüzünden mümkün. AAB'yi ayrıca ayrı bir dala
+      # bırakıyoruz ki git üzerinden de çekilebilsin (imzalama/dağıtım için).
+      - name: AAB'yi build-aab dalına bırak
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BUNDLE=neon-rift/android/app/build/outputs/bundle/release/app-release.aab
+          ls -lh "$BUNDLE"
+          WORK=$(mktemp -d)
+          cp "$BUNDLE" "$WORK/app-release.aab"
+          {
+            echo "commit: ${{ github.sha }}"
+            echo "run: ${{ github.run_id }}"
+            echo "signed: ${{ steps.keystore.outputs.signed }}"
+            echo "sha256: $(sha256sum "$BUNDLE" | cut -d' ' -f1)"
+          } > "$WORK/BUILD_INFO.txt"
+          cd "$WORK"
+          git init -q
+          git checkout -q -b build-aab
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Neon Rift release AAB (${{ github.sha }})"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" build-aab
 
       - name: AAB'yi yükle
         uses: actions/upload-artifact@v4
