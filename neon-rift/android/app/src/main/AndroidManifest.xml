@@ -22,8 +22,10 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
 
+        <!-- applicationId (com.bymel.neonrift) ile Java paketi (com.bymel.Neonrift) farklı
+             olduğu için sınıf adı kısaltmadan, tam nitelikli yazılır. -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.bymel.Neonrift.MainActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
             android:exported="true"
             android:launchMode="singleTask"

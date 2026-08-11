@@ -2,13 +2,18 @@
 
 ## 1. Uygulama
 
-- Paket adı: `com.bymel.Neonrift`
+- Paket adı: `com.bymel.neonrift`
 - Varsayılan dil: Türkçe
 - Uygulama türü: Oyun
 - Para kazanma: Uygulama içi ürünler
 - Hedef SDK: 36
 
-Paket adı yayınlandıktan sonra değiştirilemez. Play Console'da daha önce küçük harfli eski paketle uygulama oluşturulduysa bu yeni kimlik ayrı uygulama sayılır.
+Paket adı yayınlandıktan sonra değiştirilemez ve Play Console kaydı küçük harfli
+`com.bymel.neonrift` ile açılmıştır. Bu yüzden `applicationId` küçük harflidir.
+
+Java kaynak paketi (`com.bymel.Neonrift`) bilinçli olarak büyük harfli bırakılmıştır; Gradle'da
+`namespace` ile `applicationId` farklı olabilir ve kaynak dosyalarını taşımaya gerek yoktur.
+Bu ikisi farklı olduğu için manifest'teki activity adı tam nitelikli yazılmalıdır.
 
 ## 2. Tek seferlik ürünler
 
@@ -23,9 +28,11 @@ Mevcut ürün uyumluluğu için ürün kimlikleri küçük harfli bırakılmış
 
 ## 3. Satın alma doğrulama servisi
 
-Release derlemesi `PURCHASE_VERIFY_URL` boşsa içerik teslim etmez. HTTPS endpoint şu kontrolleri yapmalıdır:
+`PURCHASE_VERIFY_URL` boşsa teslimat Google Play'in satın alma sonucuna göre yapılır
+(sunucu doğrulaması aranmaz). Bir HTTPS adresi girilirse release derlemesi doğrulamayı
+otomatik olarak zorunlu kılar ve endpoint şu kontrolleri yapmalıdır:
 
-1. İstek paket adı tam olarak `com.bymel.Neonrift` mi?
+1. İstek paket adı tam olarak `com.bymel.neonrift` mi?
 2. Ürün kimliği beyaz listede mi?
 3. Android Publisher API sonucu `PURCHASED` mı?
 4. Dönen ürün satırı istenen ürünle eşleşiyor mu?
@@ -34,7 +41,7 @@ Release derlemesi `PURCHASE_VERIFY_URL` boşsa içerik teslim etmez. HTTPS endpo
 
 ## 4. AdMob kurulumu
 
-- AdMob hesabında uygulamayı `com.bymel.Neonrift` paket kimliğiyle Play Store'a bağlayın.
+- AdMob hesabında uygulamayı `com.bymel.neonrift` paket kimliğiyle Play Store'a bağlayın.
 - Uygulama kimliği: `ca-app-pub-4125240213199221~3005404416` (`res/values/strings.xml` içinde).
 - Reklam birimleri `android/gradle.properties` içindedir:
   - Bölüm sonu / ölüm geçiş reklamı: `ca-app-pub-4125240213199221/9294766589`

@@ -7,7 +7,7 @@
 
 `IntegrityGuard` sınıfı ve onu çağıran tüm kod silindi. Artık **yok**:
 
-- Paket kimliği (`com.bymel.Neonrift`) eşleşme kontrolü
+- Paket kimliği (`com.bymel.neonrift`) eşleşme kontrolü
 - Yayın sertifikası sabitleme (`BYMEL_SIGNING_CERT_SHA256`)
 - Kritik oyun assetlerinin derleme zamanı SHA-256 özetiyle bağlanması
 - Debugger algılama ve `FLAG_DEBUGGABLE` kontrolü
@@ -20,7 +20,7 @@ Play dışı kanallardan kurulabilir. Bu, bilinçli bir üründe basitleştirme 
 ## Hâlâ etkin olan korumalar
 
 1. **Kayıt şifrelemesi**
-   - Konum: `Android/data/com.bymel.Neonrift/files/NeonRift/neonrift_secure_save_v2.dat`
+   - Konum: `Android/data/com.bymel.neonrift/files/NeonRift/neonrift_secure_save_v2.dat`
    - Android Keystore üzerinde AES-GCM ile şifrelenir (minSdk 23 olduğu için tüm cihazlarda geçerli).
    - Bozuk veya çözülemeyen kayıt `.corrupt` olarak karantinaya alınır, oyun güvenli varsayılanla açılır.
 

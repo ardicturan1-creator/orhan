@@ -4,7 +4,7 @@
   window.NR_CONFIG = Object.freeze({
     appName: 'Neon Rift',
     studio: 'Bymel Software',
-    packageName: 'com.bymel.Neonrift',
+    packageName: 'com.bymel.neonrift',
     version: '1.4.0',
     saveKey: 'bymel.neonrift.save.v2',
     legacySaveKeys: Object.freeze(['bymel.neonrift.save.v1']),

@@ -22,8 +22,8 @@ Neon Rift, Android için hazırlanmış Three.js tabanlı 3D arena-survivor oyun
 
 ## v1.2.0 ile eklenenler
 
-- Android uygulama kimliği: `com.bymel.Neonrift`
-- Güvenli kayıt konumu: `Android/data/com.bymel.Neonrift/files/NeonRift/neonrift_secure_save_v2.dat`
+- Android uygulama kimliği (Play paket adı): `com.bymel.neonrift`
+- Güvenli kayıt konumu: `Android/data/com.bymel.neonrift/files/NeonRift/neonrift_secure_save_v2.dat`
 - Android Keystore ile AES-GCM şifreli kayıt
 - Eski `localStorage` kaydını otomatik taşıma
 - R8 küçültme ve release'te WebView debug kapatma
@@ -96,11 +96,11 @@ iş akışı hazırdır; gerekli depo sırları iş akışı dosyasının başı
 
 ## Satın alma doğrulama isteği
 
-Ürün kimlikleri önceki Play Console ürünleriyle uyumluluk için küçük harfli tutulmuştur. Uygulama paketi ise tam olarak `com.bymel.Neonrift` değeridir.
+Ürün kimlikleri önceki Play Console ürünleriyle uyumluluk için küçük harfli tutulmuştur. Uygulama paketi de küçük harfli `com.bymel.neonrift` değeridir; Java kaynak paketi ise `com.bymel.Neonrift` olarak kalır.
 
 ```json
 {
-  "packageName": "com.bymel.Neonrift",
+  "packageName": "com.bymel.neonrift",
   "productId": "com.bymel.neonrift.gems_80",
   "purchaseToken": "google-play-token"
 }

@@ -7,7 +7,7 @@
 | JavaScript sözdizimi | Geçti |
 | Çekirdek ekonomi/görev/kayıt/skor testleri | Geçti |
 | Paket ve kaynak tutarlılık testleri | Geçti |
-| Paket adı | `com.bymel.Neonrift` |
+| Paket adı | `com.bymel.neonrift` |
 | minSdk / targetSdk | 23 / 36 |
 | Güvenli kayıt kaynak kontrolü | Geçti |
 | BYMEL COMMANDER kaynak akışı kontrolü | Geçti |

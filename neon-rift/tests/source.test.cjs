@@ -8,12 +8,17 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
-test('Android paket kimliği istenen büyük-küçük harf biçimindedir', () => {
+test('Play paket kimliği küçük harfli, Java paketi olduğu gibi kalır', () => {
   const gradle = read('android/app/build.gradle');
   const config = read('game/js/config.js');
-  assert.match(gradle, /applicationId 'com\.bymel\.Neonrift'/);
+  const manifest = read('android/app/src/main/AndroidManifest.xml');
+  // Play Console kaydı com.bymel.neonrift; ürün kimlikleri de bu biçimde.
+  assert.match(gradle, /applicationId 'com\.bymel\.neonrift'/);
+  assert.match(config, /packageName: 'com\.bymel\.neonrift'/);
+  // Java kaynak paketi değişmedi; bu yüzden namespace büyük harfli kalır.
   assert.match(gradle, /namespace 'com\.bymel\.Neonrift'/);
-  assert.match(config, /packageName: 'com\.bymel\.Neonrift'/);
+  // İkisi farklı olduğu için activity adı tam nitelikli yazılmalıdır.
+  assert.match(manifest, /android:name="com\.bymel\.Neonrift\.MainActivity"/);
 });
 
 test('güvenli kayıt Android data alanı ve şifreleme köprüsünü kullanır', () => {

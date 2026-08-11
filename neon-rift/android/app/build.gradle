@@ -15,11 +15,14 @@ def admobRewardedUnitId = providers.gradleProperty('ADMOB_REWARDED_UNIT_ID')
         .getOrElse('ca-app-pub-4125240213199221/4071074074')
 
 android {
+    // namespace = Java kaynak paketi (com.bymel.Neonrift.* sınıfları, BuildConfig, R).
+    // applicationId = Play Store'daki paket adı ve küçük harfli olmak zorunda.
+    // İkisi bilerek farklıdır; namespace'i değiştirmek tüm kaynak dosyalarını taşımayı gerektirir.
     namespace 'com.bymel.Neonrift'
     compileSdk 36
 
     defaultConfig {
-        applicationId 'com.bymel.Neonrift'
+        applicationId 'com.bymel.neonrift'
         minSdk 23
         targetSdk 36
         versionCode 15

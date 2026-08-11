@@ -18,6 +18,10 @@
   Önceki davranışta release'te doğrulama zorunlu ama uç nokta boştu; bu, gerçek para ile yapılan
   satın almaların ücretlendirilip teslim edilmemesine yol açıyordu.
 - `minSdk` 21'den 23'e yükseltildi (Google Mobile Ads SDK gereksinimi), `android.useAndroidX` açıldı.
+- **Play paket adı düzeltildi:** `applicationId` `com.bymel.Neonrift` → `com.bymel.neonrift`.
+  Play Console kaydı küçük harfli olduğu için büyük harfli AAB yüklemede reddediliyordu.
+  Java kaynak paketi `com.bymel.Neonrift` olarak korundu (`namespace`); ikisi farklı olduğundan
+  manifest'teki activity adı tam nitelikli yazıldı.
 - Sürüm `1.4.0`, Android versionCode `15` yapıldı.
 
 ## 1.3.1
