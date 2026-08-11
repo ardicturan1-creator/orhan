@@ -72,7 +72,7 @@ jobs:
           BYMEL_KEY_PASSWORD: ${{ secrets.BYMEL_KEY_PASSWORD }}
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon clean bundleRelease
+          ./gradlew --no-daemon clean bundleRelease assembleRelease
 
       - name: İmzayı doğrula
         if: steps.keystore.outputs.signed == 'true'
@@ -90,14 +90,18 @@ jobs:
         run: |
           set -euo pipefail
           BUNDLE=neon-rift/android/app/build/outputs/bundle/release/app-release.aab
-          ls -lh "$BUNDLE"
+          APK=$(ls neon-rift/android/app/build/outputs/apk/release/*.apk | head -1)
+          ls -lh "$BUNDLE" "$APK"
           WORK=$(mktemp -d)
           cp "$BUNDLE" "$WORK/app-release.aab"
+          cp "$APK" "$WORK/app-release.apk"
           {
             echo "commit: ${{ github.sha }}"
             echo "run: ${{ github.run_id }}"
             echo "signed: ${{ steps.keystore.outputs.signed }}"
-            echo "sha256: $(sha256sum "$BUNDLE" | cut -d' ' -f1)"
+            echo "aab_sha256: $(sha256sum "$BUNDLE" | cut -d' ' -f1)"
+            echo "apk_name: $(basename "$APK")"
+            echo "apk_sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
           } > "$WORK/BUILD_INFO.txt"
           cd "$WORK"
           git init -q
@@ -108,11 +112,13 @@ jobs:
           git commit -q -m "Neon Rift release AAB (${{ github.sha }})"
           git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" build-aab
 
-      - name: AAB'yi yükle
+      - name: AAB ve APK'yı yükle
         uses: actions/upload-artifact@v4
         with:
           name: neon-rift-release-aab
-          path: neon-rift/android/app/build/outputs/bundle/release/*.aab
+          path: |
+            neon-rift/android/app/build/outputs/bundle/release/*.aab
+            neon-rift/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
 
