@@ -9,6 +9,7 @@
   var dom = {};
   var audio = new window.NeonAudio();
   var billing = new window.NeonBilling(CFG);
+  var ads = new window.NeonAds();
   var saveStatus = { native: false, code: 'WEB_FALLBACK', storage: 'localStorage', encrypted: false };
   var save = loadSave();
   var mode = 'boot';
@@ -565,6 +566,11 @@
       audio.setSettings(save.settings);
       billing.initialize().then(function () { /* Availability is surfaced only when the player opens currency packs. */ });
       billing.onEvent(handleBillingEvent);
+      ads.initialize();
+      ads.onStateChange = function () {
+        // Mağaza açıkken reklam hazır olduğunda düğme kendiliğinden aktifleşsin.
+        if (dom.panel.classList.contains('active') && $('adRewardButton')) renderCurrencyShop();
+      };
       updateHome();
       requestAnimationFrame(loop);
       window.setTimeout(function () {
@@ -1551,6 +1557,19 @@
     showModal('results');
     if (!abandoned) { audio.play('death'); haptic(70); }
     audio.stopMusic();
+    // Bölüm sonu reklamı yalnızca oyuncu öldüğünde gösterilir; menüye çıkışta gösterilmez.
+    if (!abandoned) showGameOverAd();
+  }
+
+  /**
+   * Ölüm reklamını sonuç ekranı belirdikten sonra açar. Reklam yüklenmemişse,
+   * bekleme süresindeyse veya Play dışı bir derlemedeysek oyun akışı hiç etkilenmez.
+   */
+  function showGameOverAd() {
+    window.setTimeout(function () {
+      if (mode !== 'results') return;
+      ads.showGameOverAd().catch(function () { /* Reklam gösterilemedi; sonuç ekranı olduğu gibi kalır. */ });
+    }, 900);
   }
 
   function openPanel(type, tab) {
@@ -1629,7 +1648,28 @@
       { id: CFG.products.gold12000, icon: '●', name: '12.000 Altın', detail: 'Rift Lab gelişimleri için', color: '#ffd34f' },
       { id: CFG.products.starter, icon: '☀', name: 'Başlangıç Paketi', detail: '250 elmas · 5.000 altın · Solar Flare', color: '#ff8d42' }
     ];
-    dom.panelBody.innerHTML = '<p class="section-label">GOOGLE PLAY ÜRÜNLERİ</p><div class="item-grid" id="currencyGrid"></div><p class="legal-note">Fiyat ve para birimi Google Play tarafından bölgenize göre gösterilir. Satın alma yalnızca Play test/yayın kanalından kurulan sürümde açılır; teslim, başarılı satın alma doğrulamasından sonra yapılır.</p><button id="restorePurchases" class="restore-button">SATIN ALMALARI GERİ YÜKLE</button>';
+    var goal = CFG.ads.rewardGoal;
+    var watched = save.adProgress % goal;
+    var adState = ads.refreshState();
+    var adLabel = !ads.ready ? 'PLAY SÜRÜMÜNDE' : adState.rewardedReady ? 'REKLAM İZLE' : 'HAZIRLANIYOR…';
+
+    dom.panelBody.innerHTML = '<p class="section-label">ÜCRETSİZ ELMAS</p>'
+      + '<article class="ad-reward-card">'
+      + '<div class="ad-reward-art">▶</div>'
+      + '<div class="ad-reward-body">'
+      + '<strong>' + goal + ' REKLAM · ' + CFG.ads.rewardGems + ' ELMAS</strong>'
+      + '<p>Ödüllü reklamı sonuna kadar izle. ' + goal + '. reklamda ' + CFG.ads.rewardGems + ' elmas hesabına eklenir.</p>'
+      + '<div class="mission-progress"><i style="width:' + Math.round(watched / goal * 100) + '%"></i></div>'
+      + '<small class="ad-reward-count">' + watched + ' / ' + goal + '</small>'
+      + '</div>'
+      + '<button id="adRewardButton">' + adLabel + '</button>'
+      + '</article>'
+      + '<p class="section-label">GOOGLE PLAY ÜRÜNLERİ</p><div class="item-grid" id="currencyGrid"></div><p class="legal-note">Fiyat ve para birimi Google Play tarafından bölgenize göre gösterilir. Ödeme Google Play üzerinden yapılır; kayıtlı kartınız, mobil ödeme ve Play bakiyesi dahil Play\'in desteklediği tüm yöntemler kullanılabilir. Teslim, satın alma onaylandıktan sonra yapılır.</p><button id="restorePurchases" class="restore-button">SATIN ALMALARI GERİ YÜKLE</button>';
+
+    var adButton = $('adRewardButton');
+    adButton.disabled = !ads.ready || !adState.rewardedReady;
+    adButton.addEventListener('click', watchRewardedAd);
+
     var gridNode = $('currencyGrid');
     products.forEach(function (product) {
       var item = document.createElement('article'); item.className = 'shop-item';
@@ -1640,6 +1680,39 @@
       gridNode.appendChild(item);
     });
     $('restorePurchases').addEventListener('click', restorePurchases);
+  }
+
+  /**
+   * Ödüllü reklamı açar ve yalnızca reklam tamamlandıysa sayacı ilerletir.
+   * Hedefe ulaşıldığında elmas eklenir ve sayaç sıfırlanır.
+   */
+  function watchRewardedAd() {
+    var button = $('adRewardButton');
+    if (button) { button.disabled = true; button.textContent = 'AÇILIYOR…'; }
+    ads.showRewardedAd().then(function (event) {
+      if (!event || event.earned !== true) { toast('Reklam tamamlanmadı; ödül verilmedi.', '!'); renderPanel('shop', 'currency'); return; }
+      save.adProgress += 1;
+      var goal = CFG.ads.rewardGoal;
+      if (save.adProgress >= goal) {
+        save.adProgress -= goal;
+        save.adRewardsClaimed += 1;
+        save.gems += CFG.ads.rewardGems;
+        audio.play('buy'); haptic(35);
+        toast(CFG.ads.rewardGems + ' elmas hesabına eklendi', '◆');
+      } else {
+        toast('Reklam sayıldı · ' + save.adProgress + '/' + goal, '▶');
+      }
+      persist();
+      renderPanel('shop', 'currency');
+    }).catch(function (error) {
+      var code = error && error.code;
+      var message = code === 'PLAY_BUILD_REQUIRED' ? 'Reklamlar Google Play sürümünde açılır.'
+        : code === 'AD_NOT_READY' ? 'Reklam henüz hazır değil, birazdan tekrar dene.'
+        : code === 'REWARD_SKIPPED' ? 'Reklam tamamlanmadı; ödül verilmedi.'
+        : ((error && error.message) || 'Reklam gösterilemedi.');
+      toast(message, '!');
+      renderPanel('shop', 'currency');
+    });
   }
 
   function purchaseProduct(productId) {

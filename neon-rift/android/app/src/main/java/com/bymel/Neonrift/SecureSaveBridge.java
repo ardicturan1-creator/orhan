@@ -34,12 +34,10 @@ final class SecureSaveBridge {
 
     private final Context context;
     private final File saveFile;
-    private final IntegrityGuard.Result integrity;
     private final String storageLabel;
 
-    SecureSaveBridge(Context context, IntegrityGuard.Result integrity) {
+    SecureSaveBridge(Context context) {
         this.context = context.getApplicationContext();
-        this.integrity = integrity;
         File externalRoot = context.getExternalFilesDir("NeonRift");
         File root = externalRoot != null ? externalRoot : context.getNoBackupFilesDir();
         if (!root.exists()) root.mkdirs();
@@ -76,7 +74,6 @@ final class SecureSaveBridge {
     @JavascriptInterface
     public synchronized String write(String json) {
         try {
-            if (!integrity.valid && !BuildConfig.DEBUG) return response(false, "INTEGRITY_BLOCK", null).toString();
             validateJson(json);
             byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
             if (bytes.length > MAX_SAVE_BYTES) return response(false, "TOO_LARGE", null).toString();
@@ -99,12 +96,10 @@ final class SecureSaveBridge {
     @JavascriptInterface
     public String status() {
         try {
-            JSONObject json = response(integrity.valid || BuildConfig.DEBUG, integrity.code, null);
+            JSONObject json = response(true, "OK", null);
             json.put("packageName", context.getPackageName());
             json.put("storage", storageLabel);
             json.put("encrypted", Build.VERSION.SDK_INT >= Build.VERSION_CODES.M);
-            json.put("assetVerified", !integrity.assetSha256.isEmpty());
-            json.put("signaturePinned", BuildConfig.EXPECTED_SIGNING_CERT_SHA256.length() == 64);
             return json.toString();
         } catch (Exception error) {
             return "{\"ok\":false,\"code\":\"STATUS_ERROR\"}";
@@ -133,7 +128,6 @@ final class SecureSaveBridge {
     private byte[] hmac(byte[] data) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         digest.update(context.getPackageName().getBytes(StandardCharsets.UTF_8));
-        digest.update(integrity.signingSha256.getBytes(StandardCharsets.US_ASCII));
         String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
         if (androidId != null) digest.update(androidId.getBytes(StandardCharsets.UTF_8));
         digest.update(FALLBACK_SALT);

@@ -2,13 +2,18 @@
 
 ## 1. Uygulama
 
-- Paket adı: `com.bymel.Neonrift`
+- Paket adı: `com.bymel.neonrift`
 - Varsayılan dil: Türkçe
 - Uygulama türü: Oyun
 - Para kazanma: Uygulama içi ürünler
 - Hedef SDK: 36
 
-Paket adı yayınlandıktan sonra değiştirilemez. Play Console'da daha önce küçük harfli eski paketle uygulama oluşturulduysa bu yeni kimlik ayrı uygulama sayılır.
+Paket adı yayınlandıktan sonra değiştirilemez ve Play Console kaydı küçük harfli
+`com.bymel.neonrift` ile açılmıştır. Bu yüzden `applicationId` küçük harflidir.
+
+Java kaynak paketi (`com.bymel.Neonrift`) bilinçli olarak büyük harfli bırakılmıştır; Gradle'da
+`namespace` ile `applicationId` farklı olabilir ve kaynak dosyalarını taşımaya gerek yoktur.
+Bu ikisi farklı olduğu için manifest'teki activity adı tam nitelikli yazılmalıdır.
 
 ## 2. Tek seferlik ürünler
 
@@ -23,20 +28,32 @@ Mevcut ürün uyumluluğu için ürün kimlikleri küçük harfli bırakılmış
 
 ## 3. Satın alma doğrulama servisi
 
-Release derlemesi `PURCHASE_VERIFY_URL` boşsa içerik teslim etmez. HTTPS endpoint şu kontrolleri yapmalıdır:
+`PURCHASE_VERIFY_URL` boşsa teslimat Google Play'in satın alma sonucuna göre yapılır
+(sunucu doğrulaması aranmaz). Bir HTTPS adresi girilirse release derlemesi doğrulamayı
+otomatik olarak zorunlu kılar ve endpoint şu kontrolleri yapmalıdır:
 
-1. İstek paket adı tam olarak `com.bymel.Neonrift` mi?
+1. İstek paket adı tam olarak `com.bymel.neonrift` mi?
 2. Ürün kimliği beyaz listede mi?
 3. Android Publisher API sonucu `PURCHASED` mı?
 4. Dönen ürün satırı istenen ürünle eşleşiyor mu?
 5. Token daha önce teslim edilmiş mi?
 6. Kontroller aynı veritabanı işlemi içinde başarılıysa `{"valid":true}` dönüyor mu?
 
-## 4. Release bütünlüğü
+## 4. AdMob kurulumu
 
-- `BYMEL_SIGNING_CERT_SHA256` yayın sertifikasının SHA-256 parmak izine ayarlanmalıdır.
-- Play dışı kurulumu engellemek için `REQUIRE_PLAY_INSTALLER=true` kullanılabilir.
-- Play App Signing kullanılıyorsa yerel upload sertifikası değil, cihazdaki APK'yı imzalayan **App Signing certificate** parmak izi sabitlenmelidir.
+- AdMob hesabında uygulamayı `com.bymel.neonrift` paket kimliğiyle Play Store'a bağlayın.
+- Uygulama kimliği: `ca-app-pub-4125240213199221~3005404416` (`res/values/strings.xml` içinde).
+- Reklam birimleri `android/gradle.properties` içindedir:
+  - Bölüm sonu / ölüm geçiş reklamı: `ca-app-pub-4125240213199221/9294766589`
+  - Mağaza ödüllü reklamı: `ca-app-pub-4125240213199221/4071074074`
+- Play Console → **Uygulama içeriği → Reklamlar** bölümünde "Uygulamam reklam içeriyor" seçilmelidir.
+- Veri güvenliği formunda AdMob'un topladığı **Reklam kimliği (AAID)** beyan edilmelidir;
+  manifest'te `com.google.android.gms.permission.AD_ID` izni tanımlıdır.
+- Test cihazlarınızı AdMob'da test cihazı olarak ekleyin. Gerçek reklam birimlerine kendi
+  cihazınızdan tıklamak geçersiz trafik sayılır ve hesabın askıya alınmasına yol açabilir.
+
+> Sürüm 1.4.0 ile çalışma zamanı anti-kurcalama kontrolü kaldırılmıştır; imza sabitleme ve
+> Play kurulum kontrolü artık yoktur. Ayrıntılar `docs/ANTI_CRACKING.md` içindedir.
 
 ## 5. Test kanalı
 

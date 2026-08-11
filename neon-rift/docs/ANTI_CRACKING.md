@@ -1,50 +1,61 @@
-# Anti-cracking ve kayıt bütünlüğü
+# Kayıt bütünlüğü ve satın alma güvenliği
 
-## Uygulanan katmanlar
+> **Not:** Sürüm 1.4.0 ile birlikte çalışma zamanı **anti-kurcalama (anti-tamper) kontrolü kaldırılmıştır.**
+> Aşağıdaki liste, uygulamada hâlâ bulunan korumaları ve bilinçli olarak bırakılan boşlukları anlatır.
 
-1. **Paket kimliği kontrolü**
-   - Beklenen kimlik: `com.bymel.Neonrift`.
-   - Farklı paket adıyla yeniden paketlenen release sürümü açılmaz.
+## Kaldırılan katmanlar (1.4.0)
 
-2. **Yayın sertifikası sabitleme**
-   - `BYMEL_SIGNING_CERT_SHA256` release sertifikasının 64 haneli SHA-256 değeridir.
-   - Release çalışma zamanında mevcut APK imzası bu değerle sabit süreli karşılaştırılır.
-   - Değer eksikse release derlemesi varsayılan olarak durur.
+`IntegrityGuard` sınıfı ve onu çağıran tüm kod silindi. Artık **yok**:
 
-3. **Kritik oyun asset bütünlüğü**
-   - HTML, CSS, oyun JavaScript dosyaları ve Three.js dosyası derleme sırasında tek SHA-256 özetiyle bağlanır.
-   - Uygulama başlamadan önce APK içindeki assetler tekrar hesaplanır.
+- Paket kimliği (`com.bymel.neonrift`) eşleşme kontrolü
+- Yayın sertifikası sabitleme (`BYMEL_SIGNING_CERT_SHA256`)
+- Kritik oyun assetlerinin derleme zamanı SHA-256 özetiyle bağlanması
+- Debugger algılama ve `FLAG_DEBUGGABLE` kontrolü
+- `REQUIRE_PLAY_INSTALLER` ile yalnızca Play kurulumuna izin verme
+- Release derlemesini sertifika parmak izi girilmeden durduran Gradle kontrolü
 
-4. **Release sertleştirmesi**
+Pratik sonucu: uygulama yeniden paketlenebilir, assetleri değiştirilebilir ve
+Play dışı kanallardan kurulabilir. Bu, bilinçli bir üründe basitleştirme tercihidir.
+
+## Hâlâ etkin olan korumalar
+
+1. **Kayıt şifrelemesi**
+   - Konum: `Android/data/com.bymel.neonrift/files/NeonRift/neonrift_secure_save_v2.dat`
+   - Android Keystore üzerinde AES-GCM ile şifrelenir (minSdk 23 olduğu için tüm cihazlarda geçerli).
+   - Bozuk veya çözülemeyen kayıt `.corrupt` olarak karantinaya alınır, oyun güvenli varsayılanla açılır.
+
+2. **Release sertleştirmesi**
    - R8 minify ve resource shrinking etkin.
-   - Release WebView debug kapalı.
-   - Debugger algılanırsa release açılmaz.
-   - Release ekran görüntüsü/kayıt koruması için `FLAG_SECURE` kullanır.
-   - İsteğe bağlı `REQUIRE_PLAY_INSTALLER=true` yalnızca Play Store kurulumlarına izin verir.
+   - WebView debug yalnızca debug derlemede açık.
+   - `FLAG_SECURE` (ekran görüntüsü/kayıt engelleme) **kaldırıldı**: bazı cihazlarda ödüllü
+     video reklamların siyah ekran olarak gelmesine yol açıyordu.
 
-5. **Kayıt koruması**
-   - Konum: `Android/data/com.bymel.Neonrift/files/NeonRift/neonrift_secure_save_v2.dat`.
-   - API 23+ cihazlarda Android Keystore AES-GCM.
-   - API 21–22 cihazlarda uygulama imzası ve cihaz kimliğine bağlı HMAC.
-   - Bozuk veya değiştirilmiş kayıt `.corrupt` olarak karantinaya alınır ve güvenli varsayılan kayıt açılır.
+3. **Satın alma teslimi**
+   - Tüketilebilir ürünler yalnızca başarılı `consumeAsync` sonrası teslim edilir.
+   - Başlangıç paketi acknowledge edilir; işlenen tokenlar saklanarak tekrar teslim engellenir.
+   - Ödüllü reklam ödülü yalnızca `onUserEarnedReward` tetiklendiyse verilir.
 
-6. **Satın alma koruması**
-   - Release sürümünde HTTPS sunucu doğrulaması zorunlu.
-   - Tüketilebilir ürün teslimi başarılı consume işleminden sonra yapılır.
-   - Başlangıç paketi acknowledge edilir ve token tekrar teslimi engellenir.
+## Satın alma sunucu doğrulaması
 
-## Gradle ayarları
-
-`android/gradle.properties`:
+`android/gradle.properties` içindeki `PURCHASE_VERIFY_URL` davranışı belirler:
 
 ```properties
+# Boş: teslimat Google Play'in satın alma sonucuna göre yapılır.
+PURCHASE_VERIFY_URL=
+
+# HTTPS adresi girilirse release derlemesi sunucu doğrulamasını otomatik zorunlu kılar.
 PURCHASE_VERIFY_URL=https://example.com/verify-play-purchase
-BYMEL_SIGNING_CERT_SHA256=64_HEX_CHARACTER_RELEASE_CERTIFICATE_SHA256
-REQUIRE_PLAY_INSTALLER=true
 ```
 
-Yerel geçici test için `ALLOW_UNPINNED_RELEASE=true` kullanılabilir; mağaza sürümü için kullanılmamalıdır.
+Değer boşken `REQUIRE_SERVER_VERIFICATION` release'te `false` olur. Bu bilinçli bir seçimdir:
+önceki sürümde release'te doğrulama zorunluydu ama uç nokta tanımlı değildi, bu yüzden
+**gerçek para ile yapılan her satın alma ücretlendirilip içerik hiç teslim edilmiyordu.**
+
+Gelir kaybı ve sahte satın alma riskini azaltmak için, mağaza yayınından sonra bir doğrulama
+uç noktası kurup bu değeri doldurmanız önerilir. Servis hesabı anahtarını asla uygulamaya koymayın.
 
 ## Gerçekçi güvenlik sınırı
 
-Çevrimdışı oyun mantığı ve assetler cihazdadır. Yeterli zaman ve erişimle istemci kodu değiştirilebilir. Önemli skor, ekonomi, etkinlik ödülü ve satın alma teslimatı sunucuda doğrulanmalıdır. Play Integrity API eklemek için sunucu nonce üretmeli ve tokenı Google tarafında doğrulamalıdır; yalnızca istemci kontrolü yeterli değildir.
+Oyun mantığı ve assetler cihazdadır; istemci kodu değiştirilebilir. Skor, ekonomi, etkinlik ödülü
+ve satın alma teslimatı için gerçek güvence yalnızca sunucu tarafında sağlanabilir. Play Integrity API
+eklemek isterseniz nonce'u sunucuda üretip tokenı Google tarafında doğrulamanız gerekir.

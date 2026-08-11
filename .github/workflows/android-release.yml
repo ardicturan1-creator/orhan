@@ -1,8 +1,21 @@
-name: Neon Rift Android AAB
+name: Neon Rift release AAB
+
+# İmzalı release AAB üretir. Çalıştırmak için şu depo sırları gereklidir
+# (Settings -> Secrets and variables -> Actions -> New repository secret):
+#
+#   BYMEL_KEYSTORE_BASE64    -> base64 -w0 bymel-release.jks çıktısı
+#   BYMEL_KEYSTORE_PASSWORD  -> keystore şifresi
+#   BYMEL_KEY_ALIAS          -> anahtar takma adı (ör. bymel)
+#   BYMEL_KEY_PASSWORD       -> anahtar şifresi
+#
+# Sırlar tanımlı değilse iş akışı imzasız AAB üretir ve bunu açıkça bildirir.
 
 on:
   workflow_dispatch:
   push:
+    branches:
+      - claude/game-admob-integration-t446fv
+      - claude/google-play-version-errors-uvb4lr
     paths:
       - 'neon-rift/**'
       - '.github/workflows/android-release.yml'
@@ -10,12 +23,12 @@ on:
 jobs:
   bundle:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: neon-rift/android
+    permissions:
+      contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Kaynağı al
+        uses: actions/checkout@v4
 
       - name: JDK 17 kur
         uses: actions/setup-java@v4
@@ -23,55 +36,91 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Android SDK bileşenleri
-        run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
 
-      - name: İmza anahtarını hazırla
-        id: signing
+      - name: Gradle önbelleği
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Kaynak testlerini çalıştır
+        working-directory: neon-rift
+        run: npm test
+
+      - name: Keystore'u çöz
+        id: keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.BYMEL_KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::BYMEL_KEYSTORE_BASE64 sırrı tanımlı değil; imzasız AAB üretilecek."
+          else
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/bymel-release.jks"
             echo "signed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "BYMEL_KEYSTORE_BASE64 secret'ı yok; AAB imzasız üretilecek." >&2
-            echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Release AAB derle
+        working-directory: neon-rift/android
         env:
-          BYMEL_KEYSTORE_FILE: ${{ steps.signing.outputs.signed == 'true' && format('{0}/bymel-release.jks', runner.temp) || '' }}
+          BYMEL_KEYSTORE_FILE: ${{ steps.keystore.outputs.signed == 'true' && format('{0}/bymel-release.jks', runner.temp) || '' }}
           BYMEL_KEYSTORE_PASSWORD: ${{ secrets.BYMEL_KEYSTORE_PASSWORD }}
           BYMEL_KEY_ALIAS: ${{ secrets.BYMEL_KEY_ALIAS }}
           BYMEL_KEY_PASSWORD: ${{ secrets.BYMEL_KEY_PASSWORD }}
-          SIGNING_CERT_SHA256: ${{ secrets.BYMEL_SIGNING_CERT_SHA256 }}
         run: |
-          chmod +x gradlew
-          args=(--no-daemon clean bundleRelease)
-          if [ -n "$SIGNING_CERT_SHA256" ]; then
-            args+=("-PBYMEL_SIGNING_CERT_SHA256=$SIGNING_CERT_SHA256")
-          else
-            echo "::warning::BYMEL_SIGNING_CERT_SHA256 secret'ı yok; imza sabitleme atlanıyor (mağaza yayını için önerilmez)."
-            args+=("-PALLOW_UNPINNED_RELEASE=true")
-          fi
-          ./gradlew "${args[@]}"
+          chmod +x ./gradlew
+          ./gradlew --no-daemon clean bundleRelease
 
-      - name: Sürüm bilgisini yazdır
+      - name: İmzayı doğrula
+        if: steps.keystore.outputs.signed == 'true'
+        working-directory: neon-rift/android
         run: |
-          aab=app/build/outputs/bundle/release/app-release.aab
-          ls -l "$aab"
-          grep -E 'versionCode|versionName' app/build.gradle
-          if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
-            echo "AAB imzalandı."
-          else
-            echo "::warning::AAB imzasız. Play Console kabul etmez; secret'ları ekleyip tekrar çalıştırın."
-          fi
+          BUNDLE=app/build/outputs/bundle/release/app-release.aab
+          # AAB imzası jarsigner ile doğrulanır; APK'daki apksigner AAB'yi desteklemez.
+          jarsigner -verify -verbose:summary "$BUNDLE" | tail -5
 
-      - uses: actions/upload-artifact@v4
+      # Artefakt indirme yalnızca web arayüzünden mümkün. AAB'yi ayrıca ayrı bir dala
+      # bırakıyoruz ki git üzerinden de çekilebilsin (imzalama/dağıtım için).
+      - name: AAB'yi build-aab dalına bırak
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BUNDLE=neon-rift/android/app/build/outputs/bundle/release/app-release.aab
+          ls -lh "$BUNDLE"
+          WORK=$(mktemp -d)
+          cp "$BUNDLE" "$WORK/app-release.aab"
+          {
+            echo "commit: ${{ github.sha }}"
+            echo "run: ${{ github.run_id }}"
+            echo "signed: ${{ steps.keystore.outputs.signed }}"
+            echo "sha256: $(sha256sum "$BUNDLE" | cut -d' ' -f1)"
+          } > "$WORK/BUILD_INFO.txt"
+          cd "$WORK"
+          git init -q
+          git checkout -q -b build-aab
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Neon Rift release AAB (${{ github.sha }})"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" build-aab
+
+      - name: AAB'yi yükle
+        uses: actions/upload-artifact@v4
         with:
           name: neon-rift-release-aab
-          path: neon-rift/android/app/build/outputs/bundle/release/app-release.aab
+          path: neon-rift/android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Eşleme dosyalarını yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-rift-release-mapping
+          path: neon-rift/android/app/build/outputs/mapping/release/
+          if-no-files-found: warn
+          retention-days: 30

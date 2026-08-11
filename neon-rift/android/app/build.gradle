@@ -4,50 +4,32 @@ plugins {
 
 
 def verifyUrl = providers.gradleProperty('PURCHASE_VERIFY_URL').getOrElse('')
-def expectedSigningCert = providers.gradleProperty('BYMEL_SIGNING_CERT_SHA256').getOrElse('')
-def requirePlayInstaller = providers.gradleProperty('REQUIRE_PLAY_INSTALLER').getOrElse('false').toBoolean()
-def allowUnpinnedRelease = providers.gradleProperty('ALLOW_UNPINNED_RELEASE').getOrElse('false').toBoolean()
+// Sunucu doğrulaması yalnızca gerçek bir HTTPS uç noktası tanımlıysa zorunlu tutulur.
+// Uç nokta boşken teslimat Google Play'in kendi satın alma sonucuna göre yapılır;
+// aksi halde ödeme alınır ama içerik hiç teslim edilmez.
+def requireServerVerification = verifyUrl.startsWith('https://')
 
-def criticalAssetPaths = [
-        'index.html',
-        'css/game.css',
-        'js/config.js',
-        'js/core.js',
-        'js/audio.js',
-        'js/billing.js',
-        'js/game.js',
-        'vendor/three.min.js'
-]
-
-def gameRoot = file('../../game')
-def assetDigest = java.security.MessageDigest.getInstance('SHA-256')
-criticalAssetPaths.sort().each { relativePath ->
-    def asset = new File(gameRoot, relativePath)
-    if (!asset.isFile()) throw new GradleException("Eksik kritik oyun dosyası: ${relativePath}")
-    assetDigest.update(relativePath.getBytes('UTF-8'))
-    assetDigest.update((byte) 0)
-    asset.withInputStream { stream ->
-        byte[] buffer = new byte[16384]
-        int read
-        while ((read = stream.read(buffer)) != -1) assetDigest.update(buffer, 0, read)
-    }
-}
-def gameAssetSha256 = assetDigest.digest().collect { String.format('%02X', it) }.join('')
+def admobInterstitialUnitId = providers.gradleProperty('ADMOB_INTERSTITIAL_UNIT_ID')
+        .getOrElse('ca-app-pub-4125240213199221/9294766589')
+def admobRewardedUnitId = providers.gradleProperty('ADMOB_REWARDED_UNIT_ID')
+        .getOrElse('ca-app-pub-4125240213199221/4071074074')
 
 android {
+    // namespace = Java kaynak paketi (com.bymel.Neonrift.* sınıfları, BuildConfig, R).
+    // applicationId = Play Store'daki paket adı ve küçük harfli olmak zorunda.
+    // İkisi bilerek farklıdır; namespace'i değiştirmek tüm kaynak dosyalarını taşımayı gerektirir.
     namespace 'com.bymel.Neonrift'
     compileSdk 36
 
     defaultConfig {
-        applicationId 'com.bymel.Neonrift'
-        minSdk 21
+        applicationId 'com.bymel.neonrift'
+        minSdk 23
         targetSdk 36
-        versionCode 15
-        versionName '1.3.2'
+        versionCode 20
+        versionName '1.4.1'
         buildConfigField 'String', 'PURCHASE_VERIFY_URL', '"' + verifyUrl.replace('"', '\\"') + '"'
-        buildConfigField 'String', 'EXPECTED_SIGNING_CERT_SHA256', '"' + expectedSigningCert.replaceAll('[^A-Fa-f0-9]', '').toUpperCase() + '"'
-        buildConfigField 'String', 'GAME_ASSET_SHA256', '"' + gameAssetSha256 + '"'
-        buildConfigField 'boolean', 'REQUIRE_PLAY_INSTALLER', requirePlayInstaller.toString()
+        buildConfigField 'String', 'ADMOB_INTERSTITIAL_UNIT_ID', '"' + admobInterstitialUnitId + '"'
+        buildConfigField 'String', 'ADMOB_REWARDED_UNIT_ID', '"' + admobRewardedUnitId + '"'
     }
 
     buildFeatures {
@@ -75,7 +57,7 @@ android {
             shrinkResources true
             debuggable false
             jniDebuggable false
-            buildConfigField 'boolean', 'REQUIRE_SERVER_VERIFICATION', 'true'
+            buildConfigField 'boolean', 'REQUIRE_SERVER_VERIFICATION', requireServerVerification.toString()
             if (signingConfigs.findByName('release') != null) signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -95,13 +77,7 @@ android {
     }
 }
 
-gradle.taskGraph.whenReady { graph ->
-    boolean releaseRequested = graph.allTasks.any { task -> task.project == project && task.name.toLowerCase().contains('release') }
-    if (releaseRequested && !allowUnpinnedRelease && expectedSigningCert.replaceAll('[^A-Fa-f0-9]', '').length() != 64) {
-        throw new GradleException('Release için BYMEL_SIGNING_CERT_SHA256 Gradle özelliğine 64 haneli SHA-256 yayın sertifikası parmak izi girilmelidir. Geçici olarak atlamak için ALLOW_UNPINNED_RELEASE=true kullanılabilir; mağaza yayını için önerilmez.')
-    }
-}
-
 dependencies {
     implementation 'com.android.billingclient:billing:9.1.0'
+    implementation 'com.google.android.gms:play-services-ads:24.6.0'
 }

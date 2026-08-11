@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
@@ -14,26 +13,21 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.TextView;
 
 public final class MainActivity extends Activity {
     private WebView webView;
     private BillingBridge billingBridge;
     private SecureSaveBridge secureSaveBridge;
+    private AdsBridge adsBridge;
 
     @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        if (!BuildConfig.DEBUG) getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        // FLAG_SECURE kaldırıldı: sertleştirme katmanının parçasıydı ve bazı cihazlarda
+        // ödüllü video reklamların siyah ekran olarak gelmesine yol açıyor.
         applyImmersiveMode();
-
-        IntegrityGuard.Result integrity = IntegrityGuard.assess(this);
-        if (!integrity.valid && !BuildConfig.DEBUG) {
-            showIntegrityBlock(integrity.code);
-            return;
-        }
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
         webView = new WebView(this);
@@ -76,23 +70,14 @@ public final class MainActivity extends Activity {
         });
 
         billingBridge = new BillingBridge(this, webView);
-        secureSaveBridge = new SecureSaveBridge(this, integrity);
+        secureSaveBridge = new SecureSaveBridge(this);
+        adsBridge = new AdsBridge(this, webView);
         webView.addJavascriptInterface(billingBridge, "BymelBilling");
         webView.addJavascriptInterface(secureSaveBridge, "BymelSecure");
+        webView.addJavascriptInterface(adsBridge, "BymelAds");
         webView.addJavascriptInterface(new DeviceBridge(this), "android");
         setContentView(webView);
         webView.loadUrl("file:///android_asset/index.html");
-    }
-
-    private void showIntegrityBlock(String code) {
-        TextView message = new TextView(this);
-        message.setGravity(Gravity.CENTER);
-        message.setTextColor(Color.rgb(246, 248, 255));
-        message.setBackgroundColor(Color.rgb(5, 8, 23));
-        message.setTextSize(16);
-        message.setPadding(48, 48, 48, 48);
-        message.setText("NEON RIFT\n\nUygulama bütünlüğü doğrulanamadı.\nKod: " + code + "\n\nResmî ve değiştirilmemiş sürümü yükleyin.");
-        setContentView(message);
     }
 
     private void applyImmersiveMode() {
@@ -147,9 +132,11 @@ public final class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (billingBridge != null) billingBridge.close();
+        if (adsBridge != null) adsBridge.close();
         if (webView != null) {
             webView.removeJavascriptInterface("BymelBilling");
             webView.removeJavascriptInterface("BymelSecure");
+            webView.removeJavascriptInterface("BymelAds");
             webView.removeJavascriptInterface("android");
             webView.stopLoading();
             webView.destroy();

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Neon Rift</string>
+    <!-- Gerçek AdMob uygulama kimliği (test kimliği değildir). -->
+    <string name="admob_application_id" translatable="false">ca-app-pub-4125240213199221~3005404416</string>
 </resources>

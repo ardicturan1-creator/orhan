@@ -91,6 +91,8 @@
       equippedSkin: 'cyan',
       starterOwned: false,
       processedPurchaseTokens: [],
+      adProgress: 0,
+      adRewardsClaimed: 0,
       settings: { music: true, sfx: true, haptics: true, quality: 'auto', fps: false }
     };
   }
@@ -113,6 +115,8 @@
     base.totalBosses = Math.max(0, Math.floor(Number(base.totalBosses) || 0));
     base.bestWave = Math.max(1, Math.floor(Number(base.bestWave) || 1));
     base.bestCombo = Math.max(1, Math.floor(Number(base.bestCombo) || 1));
+    base.adProgress = clamp(Math.floor(Number(base.adProgress) || 0), 0, 100);
+    base.adRewardsClaimed = Math.max(0, Math.floor(Number(base.adRewardsClaimed) || 0));
     Object.keys(base.permanent).forEach(function (key) { base.permanent[key] = clamp(Math.floor(Number(base.permanent[key]) || 0), 0, 10); });
     return base;
   }

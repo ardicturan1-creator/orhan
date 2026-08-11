@@ -8,12 +8,17 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
-test('Android paket kimliği istenen büyük-küçük harf biçimindedir', () => {
+test('Play paket kimliği küçük harfli, Java paketi olduğu gibi kalır', () => {
   const gradle = read('android/app/build.gradle');
   const config = read('game/js/config.js');
-  assert.match(gradle, /applicationId 'com\.bymel\.Neonrift'/);
+  const manifest = read('android/app/src/main/AndroidManifest.xml');
+  // Play Console kaydı com.bymel.neonrift; ürün kimlikleri de bu biçimde.
+  assert.match(gradle, /applicationId 'com\.bymel\.neonrift'/);
+  assert.match(config, /packageName: 'com\.bymel\.neonrift'/);
+  // Java kaynak paketi değişmedi; bu yüzden namespace büyük harfli kalır.
   assert.match(gradle, /namespace 'com\.bymel\.Neonrift'/);
-  assert.match(config, /packageName: 'com\.bymel\.Neonrift'/);
+  // İkisi farklı olduğu için activity adı tam nitelikli yazılmalıdır.
+  assert.match(manifest, /android:name="com\.bymel\.Neonrift\.MainActivity"/);
 });
 
 test('güvenli kayıt Android data alanı ve şifreleme köprüsünü kullanır', () => {
@@ -26,13 +31,76 @@ test('güvenli kayıt Android data alanı ve şifreleme köprüsünü kullanır'
   assert.match(game, /if \(storedNatively\)[\s\S]*localStorage\.removeItem/);
 });
 
-test('release bütünlük korumaları kaynakta etkindir', () => {
-  const guard = read('android/app/src/main/java/com/bymel/Neonrift/IntegrityGuard.java');
+test('anti-kurcalama bütünlük kontrolü tamamen kaldırılmıştır', () => {
+  assert.equal(
+    fs.existsSync(path.join(root, 'android/app/src/main/java/com/bymel/Neonrift/IntegrityGuard.java')),
+    false,
+    'IntegrityGuard.java hâlâ mevcut'
+  );
   const activity = read('android/app/src/main/java/com/bymel/Neonrift/MainActivity.java');
-  assert.match(guard, /EXPECTED_SIGNING_CERT_SHA256/);
-  assert.match(guard, /GAME_ASSET_SHA256/);
-  assert.match(activity, /FLAG_SECURE/);
+  const save = read('android/app/src/main/java/com/bymel/Neonrift/SecureSaveBridge.java');
+  const gradle = read('android/app/build.gradle');
+  for (const source of [activity, save, gradle]) {
+    assert.doesNotMatch(source, /IntegrityGuard/);
+  }
+  assert.doesNotMatch(gradle, /EXPECTED_SIGNING_CERT_SHA256|GAME_ASSET_SHA256|REQUIRE_PLAY_INSTALLER/);
+  assert.doesNotMatch(save, /INTEGRITY_BLOCK/);
+  // Kurcalama kontrolü kalksa da WebView debug yalnızca debug derlemede açık kalmalıdır.
   assert.match(activity, /setWebContentsDebuggingEnabled\(BuildConfig\.DEBUG\)/);
+});
+
+test('AdMob gerçek uygulama ve reklam birimi kimlikleriyle bağlanmıştır', () => {
+  const strings = read('android/app/src/main/res/values/strings.xml');
+  const manifest = read('android/app/src/main/AndroidManifest.xml');
+  const gradle = read('android/app/build.gradle');
+  const properties = read('android/gradle.properties');
+
+  assert.match(strings, /ca-app-pub-4125240213199221~3005404416/);
+  assert.match(manifest, /com\.google\.android\.gms\.ads\.APPLICATION_ID/);
+  assert.match(manifest, /android:name="com\.google\.android\.gms\.permission\.AD_ID"/);
+  assert.match(gradle, /com\.google\.android\.gms:play-services-ads:/);
+  assert.match(properties, /ADMOB_INTERSTITIAL_UNIT_ID=ca-app-pub-4125240213199221\/9294766589/);
+  assert.match(properties, /ADMOB_REWARDED_UNIT_ID=ca-app-pub-4125240213199221\/4071074074/);
+
+  // Google'ın test reklam kimlikleri hiçbir kaynakta kalmamalıdır.
+  for (const relative of ['android/app/build.gradle', 'android/gradle.properties', 'android/app/src/main/res/values/strings.xml', 'android/app/src/main/AndroidManifest.xml', 'android/app/src/main/java/com/bymel/Neonrift/AdsBridge.java', 'game/js/ads.js', 'game/js/game.js', 'game/js/config.js']) {
+    assert.doesNotMatch(read(relative), /ca-app-pub-3940256099942544/, `Test reklam kimliği bulundu: ${relative}`);
+  }
+});
+
+test('ölüm reklamı ve mağazadaki ödüllü reklam akışı bağlanmıştır', () => {
+  const bridge = read('android/app/src/main/java/com/bymel/Neonrift/AdsBridge.java');
+  const activity = read('android/app/src/main/java/com/bymel/Neonrift/MainActivity.java');
+  const game = read('game/js/game.js');
+  const config = read('game/js/config.js');
+  const html = read('game/index.html');
+
+  assert.match(bridge, /BuildConfig\.ADMOB_INTERSTITIAL_UNIT_ID/);
+  assert.match(bridge, /BuildConfig\.ADMOB_REWARDED_UNIT_ID/);
+  assert.match(activity, /addJavascriptInterface\(adsBridge, "BymelAds"\)/);
+  assert.match(html, /src="js\/ads\.js"/);
+
+  // Ölüm reklamı finishRun içinden, yalnızca oyuncu öldüğünde tetiklenir.
+  assert.match(game, /if \(!abandoned\) showGameOverAd\(\);/);
+  assert.match(game, /ads\.showGameOverAd\(\)/);
+
+  // 5 reklam -> 200 elmas.
+  assert.match(config, /rewardGoal: 5/);
+  assert.match(config, /rewardGems: 200/);
+  assert.match(game, /save\.adProgress \+= 1;/);
+  assert.match(game, /save\.gems \+= CFG\.ads\.rewardGems;/);
+  // Ödül yalnızca reklam gerçekten tamamlandığında verilir.
+  assert.match(game, /event\.earned !== true/);
+});
+
+test('satın alma sunucu doğrulaması yalnızca uç nokta tanımlıysa zorunludur', () => {
+  const gradle = read('android/app/build.gradle');
+  assert.match(gradle, /requireServerVerification = verifyUrl\.startsWith\('https:\/\/'\)/);
+  assert.match(gradle, /'REQUIRE_SERVER_VERIFICATION', requireServerVerification\.toString\(\)/);
+  // Gerçek Play Billing akışı korunmalıdır.
+  const billing = read('android/app/src/main/java/com/bymel/Neonrift/BillingBridge.java');
+  assert.match(billing, /launchBillingFlow/);
+  assert.match(billing, /consumeAsync/);
 });
 
 test('Titan sonrası BYMEL COMMANDER akışı ve dört faz (öfke fazı dahil) bulunur', () => {

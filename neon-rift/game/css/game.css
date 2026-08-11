@@ -222,6 +222,17 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 .legal-note { margin: 14px 3px 0; color: var(--muted); font-size: 7px; line-height: 1.6; }
 .restore-button { margin-top: 12px; height: 34px; padding: 0 15px; border-radius: 8px; background: rgba(255,255,255,.07); color: var(--muted); font-size: 8px; font-weight: 900; }
 
+.ad-reward-card { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; padding: 12px; border: 1px solid rgba(93,255,173,.28); border-radius: 12px; background: linear-gradient(145deg, rgba(16,58,52,.72), rgba(9,15,35,.86)); }
+.ad-reward-art { flex: none; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 10px; background: radial-gradient(circle, rgba(93,255,173,.22), rgba(8,14,33,.1)); color: var(--green); font-size: 20px; text-shadow: 0 0 16px currentColor; }
+.ad-reward-body { flex: 1; min-width: 0; }
+.ad-reward-body strong { display: block; font-size: 10px; }
+.ad-reward-body p { margin: 4px 0 8px; color: var(--muted); font-size: 7px; line-height: 1.4; }
+.ad-reward-body .mission-progress { margin-top: 0; border-radius: 3px; }
+.ad-reward-body .mission-progress i { background: linear-gradient(90deg, var(--green), var(--cyan)); }
+.ad-reward-count { display: block; margin-top: 5px; color: var(--green); font-size: 7px; font-weight: 900; letter-spacing: .1em; }
+.ad-reward-card button { flex: none; height: 34px; padding: 0 13px; border-radius: 8px; background: rgba(93,255,173,.14); border: 1px solid rgba(93,255,173,.3); color: var(--green); font-size: 8px; font-weight: 900; }
+.ad-reward-card button:disabled { opacity: .45; filter: grayscale(1); }
+
 .toast { position: fixed; z-index: 150; left: 50%; bottom: calc(var(--safe-bottom) + 14px); min-width: 240px; max-width: 70vw; display: flex; align-items: center; gap: 10px; padding: 11px 15px; opacity: 0; pointer-events: none; transform: translate(-50%, 22px); border: 1px solid rgba(67,247,255,.28); border-radius: 11px; background: rgba(8,15,35,.96); box-shadow: 0 10px 30px rgba(0,0,0,.32); transition: opacity .2s, transform .2s; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast > span { width: 23px; height: 23px; display: grid; place-items: center; border-radius: 50%; background: rgba(93,255,173,.13); color: var(--green); font-weight: 900; }

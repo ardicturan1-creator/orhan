@@ -1,6 +1,17 @@
-# Neon Rift — Bymel Software v1.2.0
+# Neon Rift — Bymel Software v1.4.0
 
 Neon Rift, Android için hazırlanmış Three.js tabanlı 3D arena-survivor oyunudur. Oyuncu hareket ederken en yakın hedefe otomatik ateş eder; Dash, Nova, Rift Overdrive ve koşu içi yükseltmelerle giderek zorlaşan dalgalarda ilerler.
+
+## v1.4.0 ile değişenler
+
+- **Anti-kurcalama (anti-tamper) kontrolü kaldırıldı**: imza sabitleme, asset SHA-256 doğrulaması,
+  debugger algılama ve Play kurulum kontrolü artık yok (`docs/ANTI_CRACKING.md`)
+- **Google AdMob** entegrasyonu (gerçek kimlikler; test kimliği kullanılmıyor)
+- Oyuncu öldüğünde bölüm sonu geçiş reklamı (30 sn en kısa bekleme ile)
+- Mağazada **5 ödüllü reklam → 200 elmas**; ödül yalnızca reklam tamamlanırsa verilir
+- Google Play Billing ile gerçek para satın alma akışı korundu; sunucu doğrulaması artık
+  yalnızca `PURCHASE_VERIFY_URL` tanımlıysa zorunlu
+- `minSdk` 23'e yükseltildi, AndroidX açıldı, versionCode `15`
 
 ## v1.3.0 ile eklenenler
 
@@ -11,12 +22,11 @@ Neon Rift, Android için hazırlanmış Three.js tabanlı 3D arena-survivor oyun
 
 ## v1.2.0 ile eklenenler
 
-- Android uygulama kimliği: `com.bymel.Neonrift`
-- Güvenli kayıt konumu: `Android/data/com.bymel.Neonrift/files/NeonRift/neonrift_secure_save_v2.dat`
-- Android 6.0+ cihazlarda Android Keystore ile AES-GCM şifreli kayıt
-- Android 5.x için cihaz ve imza bağlı HMAC bütünlük koruması
+- Android uygulama kimliği (Play paket adı): `com.bymel.neonrift`
+- Güvenli kayıt konumu: `Android/data/com.bymel.neonrift/files/NeonRift/neonrift_secure_save_v2.dat`
+- Android Keystore ile AES-GCM şifreli kayıt
 - Eski `localStorage` kaydını otomatik taşıma
-- Release sertifika sabitleme, kritik asset SHA-256 doğrulaması, R8 küçültme ve WebView debug kapatma
+- R8 küçültme ve release'te WebView debug kapatma
 - Rift Titan yenildikten sonra gelen üç fazlı **BYMEL COMMANDER** bossu
 - Commander minyon çağırma, bariyer, fan/radyal saldırı ve son faz dash desenleri
 - Elit düşmanlar, Splitter düşmanı, dalga modları, iyileştirme düşüşleri ve Rift Overdrive
@@ -36,7 +46,7 @@ Neon Rift, Android için hazırlanmış Three.js tabanlı 3D arena-survivor oyun
 ## Proje yapısı
 
 - `game/`: çevrimdışı HTML/CSS/JavaScript/Three.js oyun içeriği
-- `android/`: Android WebView kabuğu, güvenli kayıt, bütünlük denetimi ve Google Play Billing
+- `android/`: Android WebView kabuğu, güvenli kayıt, AdMob reklamları ve Google Play Billing
 - `tests/`: çekirdek ekonomi/kayıt testleri ve kaynak tutarlılık kontrolleri
 - `docs/`: Play Console, anti-cracking ve cihaz test notları
 
@@ -46,10 +56,6 @@ Neon Rift, Android için hazırlanmış Three.js tabanlı 3D arena-survivor oyun
 npm test
 npm run check
 ```
-
-## Uygulama simgesi
-
-Gönderilen Neon Rift NR görseli, legacy ve adaptive Android launcher simgeleri olarak projeye eklenmiştir. Kaynak ve Play Store sürümleri `branding/` klasöründedir.
 
 ## Android debug derlemesi
 
@@ -62,32 +68,39 @@ cd android
 
 Debug çıktısı `android/app/build/outputs/apk/debug/app-debug.apk` altında oluşur.
 
-## Güvenli release derlemesi
+## Release AAB derlemesi
 
-1. Yayın keystore ortam değişkenlerini `android/signing.env.example` biçiminde tanımlayın.
-2. Yayın sertifikasının SHA-256 parmak izini alın:
+1. Yayın keystore ortam değişkenlerini `android/signing.env.example` biçiminde tanımlayın:
 
 ```bash
-keytool -list -v -keystore /path/to/bymel-release.jks -alias bymel
+export BYMEL_KEYSTORE_FILE=/absolute/path/to/bymel-release.jks
+export BYMEL_KEYSTORE_PASSWORD=...
+export BYMEL_KEY_ALIAS=bymel
+export BYMEL_KEY_PASSWORD=...
 ```
 
-3. `android/gradle.properties` içinde `BYMEL_SIGNING_CERT_SHA256` ve `PURCHASE_VERIFY_URL` değerlerini ayarlayın.
-4. AAB üretin:
+2. AAB üretin:
 
 ```bash
 cd android
 ./gradlew clean bundleRelease
 ```
 
-Release derlemesi, 64 haneli sertifika SHA-256 değeri verilmeden varsayılan olarak durdurulur. Ayrıntılar `docs/ANTI_CRACKING.md` içindedir.
+Çıktı: `android/app/build/outputs/bundle/release/app-release.aab`
+
+Reklam birimleri `android/gradle.properties` içinde gerçek değerlerle tanımlıdır; test kimliği
+kullanılmaz. İsteğe bağlı `PURCHASE_VERIFY_URL` ayarı için `docs/ANTI_CRACKING.md` dosyasına bakın.
+
+GitHub Actions üzerinden imzalı AAB üretmek için `.github/workflows/android-release.yml`
+iş akışı hazırdır; gerekli depo sırları iş akışı dosyasının başında listelenmiştir.
 
 ## Satın alma doğrulama isteği
 
-Ürün kimlikleri önceki Play Console ürünleriyle uyumluluk için küçük harfli tutulmuştur. Uygulama paketi ise tam olarak `com.bymel.Neonrift` değeridir.
+Ürün kimlikleri önceki Play Console ürünleriyle uyumluluk için küçük harfli tutulmuştur. Uygulama paketi de küçük harfli `com.bymel.neonrift` değeridir; Java kaynak paketi ise `com.bymel.Neonrift` olarak kalır.
 
 ```json
 {
-  "packageName": "com.bymel.Neonrift",
+  "packageName": "com.bymel.neonrift",
   "productId": "com.bymel.neonrift.gems_80",
   "purchaseToken": "google-play-token"
 }
