@@ -27,7 +27,8 @@ Play dışı kanallardan kurulabilir. Bu, bilinçli bir üründe basitleştirme 
 2. **Release sertleştirmesi**
    - R8 minify ve resource shrinking etkin.
    - WebView debug yalnızca debug derlemede açık.
-   - Ekran görüntüsü/kayıt koruması için release'te `FLAG_SECURE` kullanılır.
+   - `FLAG_SECURE` (ekran görüntüsü/kayıt engelleme) **kaldırıldı**: bazı cihazlarda ödüllü
+     video reklamların siyah ekran olarak gelmesine yol açıyordu.
 
 3. **Satın alma teslimi**
    - Tüketilebilir ürünler yalnızca başarılı `consumeAsync` sonrası teslim edilir.

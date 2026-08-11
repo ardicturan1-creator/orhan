@@ -25,7 +25,8 @@ public final class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        if (!BuildConfig.DEBUG) getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        // FLAG_SECURE kaldırıldı: sertleştirme katmanının parçasıydı ve bazı cihazlarda
+        // ödüllü video reklamların siyah ekran olarak gelmesine yol açıyor.
         applyImmersiveMode();
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
