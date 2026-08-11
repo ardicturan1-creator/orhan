@@ -1,0 +1,6 @@
+commit: 7c2c0bbba6e18e15005d457aea6e1560290c3490
+run: 31514429578
+signed: false
+aab_sha256: 9d58b09e2b86ccb175b2d1734ed94a7aacadb9f473f2fa5e2febd67f11cd607e
+apk_name: app-release-unsigned.apk
+apk_sha256: ebe2cb287e8867f3431d5a9ac85a4e432f0e8b607ed2a232e6f248422195d7e1
