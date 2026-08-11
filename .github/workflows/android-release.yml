@@ -1,0 +1,77 @@
+name: Neon Rift Android AAB
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'neon-rift/**'
+      - '.github/workflows/android-release.yml'
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: neon-rift/android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK bileşenleri
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: İmza anahtarını hazırla
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.BYMEL_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/bymel-release.jks"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "BYMEL_KEYSTORE_BASE64 secret'ı yok; AAB imzasız üretilecek." >&2
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Release AAB derle
+        env:
+          BYMEL_KEYSTORE_FILE: ${{ steps.signing.outputs.signed == 'true' && format('{0}/bymel-release.jks', runner.temp) || '' }}
+          BYMEL_KEYSTORE_PASSWORD: ${{ secrets.BYMEL_KEYSTORE_PASSWORD }}
+          BYMEL_KEY_ALIAS: ${{ secrets.BYMEL_KEY_ALIAS }}
+          BYMEL_KEY_PASSWORD: ${{ secrets.BYMEL_KEY_PASSWORD }}
+          SIGNING_CERT_SHA256: ${{ secrets.BYMEL_SIGNING_CERT_SHA256 }}
+        run: |
+          chmod +x gradlew
+          args=(--no-daemon clean bundleRelease)
+          if [ -n "$SIGNING_CERT_SHA256" ]; then
+            args+=("-PBYMEL_SIGNING_CERT_SHA256=$SIGNING_CERT_SHA256")
+          else
+            echo "::warning::BYMEL_SIGNING_CERT_SHA256 secret'ı yok; imza sabitleme atlanıyor (mağaza yayını için önerilmez)."
+            args+=("-PALLOW_UNPINNED_RELEASE=true")
+          fi
+          ./gradlew "${args[@]}"
+
+      - name: Sürüm bilgisini yazdır
+        run: |
+          aab=app/build/outputs/bundle/release/app-release.aab
+          ls -l "$aab"
+          grep -E 'versionCode|versionName' app/build.gradle
+          if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
+            echo "AAB imzalandı."
+          else
+            echo "::warning::AAB imzasız. Play Console kabul etmez; secret'ları ekleyip tekrar çalıştırın."
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neon-rift-release-aab
+          path: neon-rift/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
