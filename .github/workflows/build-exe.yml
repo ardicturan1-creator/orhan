@@ -1,0 +1,41 @@
+name: Build EXE
+
+on:
+  push:
+    branches:
+      - claude/exe-compile-error-0tfmv4
+    paths:
+      - vanguard_ban.py
+      - .github/workflows/build-exe.yml
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build EXE
+        run: >
+          pyinstaller
+          --onefile
+          --noconsole
+          --name VanguardBan
+          vanguard_ban.py
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VanguardBan-exe
+          path: dist/VanguardBan.exe
+          if-no-files-found: error
