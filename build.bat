@@ -33,7 +33,7 @@ if errorlevel 1 (
 echo.
 echo [+] Tamam! EXE burada: dist\chrome_opener.exe
 echo     - Calistirmak icin: dist\chrome_opener.exe
-echo     - Aciliisa eklemek icin: dist\chrome_opener.exe --install
+echo     - Cift tiklayinca kendini aciliisa ekler ve 5 sekme acar
 echo.
 pause
 endlocal

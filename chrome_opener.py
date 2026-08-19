@@ -6,10 +6,10 @@ Belirtilen sayida Google sekmesini hizli sekilde acar.
 Windows aciliisinda otomatik baslatma destegi vardir.
 
 Kullanim:
-    chrome_opener.exe                 -> 5 Google sekmesi acar
+    chrome_opener.exe                 -> Aciliisa (bir kez) ekler ve 5 Google sekmesi acar
     chrome_opener.exe -n 8            -> 8 sekme acar
     chrome_opener.exe -u https://... -> baska bir URL acar
-    chrome_opener.exe --install       -> Windows aciliisina ekler
+    chrome_opener.exe --no-startup    -> Bu sefer aciliisa ekleme, sadece ac
     chrome_opener.exe --uninstall     -> Windows aciliisindan cikarir
 """
 
@@ -68,19 +68,35 @@ def open_tabs(url, count, delay):
     return opened, chrome_path
 
 
-def install_startup():
-    """Programin kendisini Windows aciliis kayit defterine (Run) ekler."""
+def _startup_command():
+    """Aciliista calisacak komut satirini uretir (sadece sekme ac, tekrar kurma)."""
+    exe_path = get_self_path()
+    return f'"{exe_path}" --no-startup'
+
+
+def ensure_startup():
+    """Aciliis kaydini yoksa ekler, varsa ve dogruysa dokunmaz. Idempotent."""
     if os.name != "nt":
-        print("[!] Aciliis kaydi yalnizca Windows'ta desteklenir.", file=sys.stderr)
         return False
     import winreg  # type: ignore
 
-    exe_path = get_self_path()
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
-        winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, f'"{exe_path}"')
-    print(f"[+] Aciliisa eklendi: {exe_path}")
-    return True
+    desired = _startup_command()
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0,
+                            winreg.KEY_READ | winreg.KEY_SET_VALUE) as key:
+            try:
+                current, _ = winreg.QueryValueEx(key, APP_NAME)
+                if current == desired:
+                    return True  # zaten dogru, dokunma
+            except FileNotFoundError:
+                pass
+            winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, desired)
+        print(f"[+] Aciliisa eklendi.")
+        return True
+    except Exception as exc:  # noqa: BLE001
+        print(f"[!] Aciliisa eklenemedi: {exc}", file=sys.stderr)
+        return False
 
 
 def uninstall_startup():
@@ -118,8 +134,8 @@ def parse_args(argv):
                         help=f"Acilacak URL (varsayilan: {DEFAULT_URL})")
     parser.add_argument("-d", "--delay", type=float, default=0.0,
                         help="Sekmeler arasi bekleme (saniye, varsayilan: 0)")
-    parser.add_argument("--install", action="store_true",
-                        help="Windows aciliisina ekle")
+    parser.add_argument("--no-startup", dest="no_startup", action="store_true",
+                        help="Bu calistirmada aciliisa ekleme")
     parser.add_argument("--uninstall", action="store_true",
                         help="Windows aciliisindan cikar")
     return parser.parse_args(argv)
@@ -128,10 +144,12 @@ def parse_args(argv):
 def main(argv=None):
     args = parse_args(argv if argv is not None else sys.argv[1:])
 
-    if args.install:
-        return 0 if install_startup() else 1
     if args.uninstall:
         return 0 if uninstall_startup() else 1
+
+    # Cift tiklandiginda (bayrak yoksa) kendini aciliisa ekler (bir kez).
+    if not args.no_startup:
+        ensure_startup()
 
     count = max(1, min(args.count, 50))  # 1..50 ile sinirli tut
     print(f"[i] {count} sekme aciliyor -> {args.url}")
