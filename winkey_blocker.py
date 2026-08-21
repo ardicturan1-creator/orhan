@@ -34,6 +34,8 @@ MOD_CONTROL = 0x0002
 MOD_ALT = 0x0001
 VK_Q = 0x51
 HC_ACTION = 0
+SW_HIDE = 0
+ERROR_ALREADY_EXISTS = 183
 
 user32 = ctypes.windll.user32 if os.name == "nt" else None
 kernel32 = ctypes.windll.kernel32 if os.name == "nt" else None
@@ -155,12 +157,35 @@ def uninstall_startup():
     return True
 
 
+def hide_console():
+    """Kendi konsol penceresini gizler (sessiz calisma)."""
+    try:
+        hwnd = kernel32.GetConsoleWindow()
+        if hwnd:
+            user32.ShowWindow(hwnd, SW_HIDE)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def acquire_single_instance():
+    """Ayni anda ikinci kez calismayi engeller. True = tek ornek."""
+    try:
+        handle = kernel32.CreateMutexW(None, False, "Global\\WinKeyBlockerMutex")
+        if kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+            return False
+        return handle is not None
+    except Exception:  # noqa: BLE001
+        return True
+
+
 def parse_args(argv):
     p = argparse.ArgumentParser(description="Windows (Win logo) tusunu engeller.")
     p.add_argument("--no-startup", dest="no_startup", action="store_true",
                    help="Bu calistirmada aciliisa ekleme")
     p.add_argument("--uninstall", action="store_true",
                    help="Aciliistan cikar ve cik")
+    p.add_argument("--debug", action="store_true",
+                   help="Konsolu gizleme (hata ayiklama)")
     return p.parse_args(argv)
 
 
@@ -174,6 +199,13 @@ def main(argv=None):
     if args.uninstall:
         uninstall_startup()
         return 0
+
+    if not acquire_single_instance():
+        print("[i] Zaten calisiyor.", file=sys.stderr)
+        return 0
+
+    if not args.debug:
+        hide_console()
 
     if not args.no_startup:
         ensure_startup()
