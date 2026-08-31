@@ -32,6 +32,18 @@ npm run sync:android   # web derlemesi + Capacitor senkronizasyonu
 npm run apk            # android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
+> **Sürüm geçişi notu:** İlk sürümler (v1.1/v1.2) CI'da HER ÇALIŞTIRMADA
+> **rastgele** üretilen bir anahtarla imzalanıyordu. Android, aynı paket adına
+> (`com.bymel.twinsoccer`) sahip ama imzası farklı bir APK'nın üzerine kurulumu
+> sessizce reddeder — "tıklıyorum hiçbir şey olmuyor" hissi tam olarak buydu.
+> Artık depoya gömülü **sabit** bir anahtar (`android/app/twin-soccer-release.jks`)
+> kullanılıyor; bu sürümden itibaren güncellemeler sorunsuz kurulur.
+>
+> **Telefonunda daha önce Twin Soccer'ın eski bir sürümü kuruluysa, yeni APK'yı
+> kurmadan önce onu BİR KEZ kaldırmalısın** (Ayarlar → Uygulamalar → Twin Soccer
+> → Kaldır). Bundan sonraki her sürüm aynı anahtarla imzalanacağı için tekrar
+> kaldırmana gerek kalmayacak.
+
 APK ayrıca her `push`'ta **GitHub Actions** ile derlenir
 (`.github/workflows/android.yml`) ve *Releases* sayfasına yüklenir:
 

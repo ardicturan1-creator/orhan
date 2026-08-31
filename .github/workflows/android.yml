@@ -72,6 +72,14 @@ jobs:
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -e
+          # ÖNEMLİ: Bu adım her çalıştığında FARKLI rastgele bir anahtar üretirse,
+          # bir önceki sürümü telefonuna kurmuş kullanıcı yeni sürümü KURAMAZ —
+          # Android, aynı paket adına (com.bymel.twinsoccer) sahip ama imzası
+          # farklı bir APK'nın üzerine kurulumu sessizce reddeder ("tıklıyorum
+          # hiçbir şey olmuyor" hissi tam olarak budur). Bu yüzden depoya
+          # gömülü SABİT bir anahtar kullanılır; her sürüm aynı imzayı taşır ve
+          # üzerine güncelleme sorunsuz çalışır. Kendi anahtarınla imzalamak
+          # istersen ANDROID_KEYSTORE_BASE64 vb. depo sırlarını tanımlaman yeterli.
           if [ -n "$KS_B64" ]; then
             echo "$KS_B64" | base64 -d > android/app/twin-soccer.keystore
             echo "storePass=$KS_PASS" >> $GITHUB_OUTPUT
@@ -79,14 +87,12 @@ jobs:
             echo "keyPass=$KEY_PASS" >> $GITHUB_OUTPUT
             echo "kaynak=depo-sirri" >> $GITHUB_OUTPUT
           else
-            keytool -genkeypair -v -keystore android/app/twin-soccer.keystore \
-              -alias twinsoccer -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass twinsoccer -keypass twinsoccer \
-              -dname "CN=Twin Soccer, OU=BYMEL SOFTWARE, O=BYMEL, L=Istanbul, C=TR"
-            echo "storePass=twinsoccer" >> $GITHUB_OUTPUT
+            test -f android/app/twin-soccer-release.jks
+            echo "storePass=BymelTwinSoccer2026" >> $GITHUB_OUTPUT
             echo "alias=twinsoccer" >> $GITHUB_OUTPUT
-            echo "keyPass=twinsoccer" >> $GITHUB_OUTPUT
-            echo "kaynak=uretildi" >> $GITHUB_OUTPUT
+            echo "keyPass=BymelTwinSoccer2026" >> $GITHUB_OUTPUT
+            echo "keystoreFile=twin-soccer-release.jks" >> $GITHUB_OUTPUT
+            echo "kaynak=depoya-gomulu-sabit-anahtar" >> $GITHUB_OUTPUT
           fi
 
       - name: APK derle (debug + release)
@@ -95,10 +101,12 @@ jobs:
           TS_STORE_PASS: ${{ steps.keystore.outputs.storePass }}
           TS_KEY_ALIAS: ${{ steps.keystore.outputs.alias }}
           TS_KEY_PASS: ${{ steps.keystore.outputs.keyPass }}
+          TS_KEYSTORE_FILE: ${{ steps.keystore.outputs.keystoreFile }}
         run: |
           chmod +x gradlew
+          test -f "app/$TS_KEYSTORE_FILE"
           ./gradlew --no-daemon assembleDebug assembleRelease \
-            -Pandroid.injected.signing.store.file=$PWD/app/twin-soccer.keystore \
+            -Pandroid.injected.signing.store.file=$PWD/app/$TS_KEYSTORE_FILE \
             -Pandroid.injected.signing.store.password=$TS_STORE_PASS \
             -Pandroid.injected.signing.key.alias=$TS_KEY_ALIAS \
             -Pandroid.injected.signing.key.password=$TS_KEY_PASS
@@ -109,6 +117,21 @@ jobs:
           cp android/app/build/outputs/apk/debug/app-debug.apk out/TwinSoccer-debug.apk
           cp android/app/build/outputs/apk/release/*.apk out/TwinSoccer-release.apk
           ls -la out
+
+      - name: APK'yı doğrula (imza + kurulabilirlik)
+        # Yalnızca teşhis amaçlı — bir araç/sürüm uyuşmazlığı bu adımı bozarsa
+        # yayını ENGELLEMESİN (asıl derleme zaten önceki adımda tamamlandı).
+        continue-on-error: true
+        run: |
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/*/ 2>/dev/null | sort -V | tail -1)
+          APKSIGNER="${BUILD_TOOLS}apksigner"
+          AAPT2="${BUILD_TOOLS}aapt2"
+          echo "== apksigner verify (release) =="
+          "$APKSIGNER" verify --print-certs -v out/TwinSoccer-release.apk || echo "UYARI: apksigner doğrulaması başarısız/atlandı"
+          echo "== apksigner verify (debug) =="
+          "$APKSIGNER" verify --print-certs -v out/TwinSoccer-debug.apk || echo "UYARI: apksigner doğrulaması başarısız/atlandı"
+          echo "== manifest / launcher activity (release) =="
+          "$AAPT2" dump badging out/TwinSoccer-release.apk 2>&1 | grep -E "package:|launchable-activity:|sdkVersion:|application-icon" || echo "UYARI: aapt2 dump badging atlandı"
 
       - name: Artefaktları yükle
         uses: actions/upload-artifact@v4
