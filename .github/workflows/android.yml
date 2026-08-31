@@ -1,0 +1,135 @@
+name: APK Derle (Twin Soccer)
+
+on:
+  push:
+    branches: ["claude/futbol-game-development-d1ygvy", "main"]
+    paths:
+      - "twin-soccer/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: twin-soccer
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 20 kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: twin-soccer/package-lock.json
+
+      - name: JDK 21 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+
+      - name: Bağımlılıklar
+        run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+      - name: Tip denetimi
+        run: npx tsc --noEmit
+
+      - name: Kayıt şifreleme testi
+        run: npx tsx tools/crypto.test.ts
+
+      - name: Motor denge testi
+        run: npx tsx tools/sim.ts 6
+
+      - name: Web derlemesi (tek dosya)
+        run: npm run build
+
+      - name: Sürüm numarası
+        run: |
+          VC=${{ github.run_number }}
+          sed -i "s/versionCode 1/versionCode ${VC}/" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"1.${VC}\"/" android/app/build.gradle
+
+      - name: Capacitor senkronizasyonu
+        run: npx cap sync android
+
+      - name: İmza anahtarı hazırla
+        id: keystore
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -e
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > android/app/twin-soccer.keystore
+            echo "storePass=$KS_PASS" >> $GITHUB_OUTPUT
+            echo "alias=$KEY_ALIAS" >> $GITHUB_OUTPUT
+            echo "keyPass=$KEY_PASS" >> $GITHUB_OUTPUT
+            echo "kaynak=depo-sirri" >> $GITHUB_OUTPUT
+          else
+            keytool -genkeypair -v -keystore android/app/twin-soccer.keystore \
+              -alias twinsoccer -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass twinsoccer -keypass twinsoccer \
+              -dname "CN=Twin Soccer, OU=BYMEL SOFTWARE, O=BYMEL, L=Istanbul, C=TR"
+            echo "storePass=twinsoccer" >> $GITHUB_OUTPUT
+            echo "alias=twinsoccer" >> $GITHUB_OUTPUT
+            echo "keyPass=twinsoccer" >> $GITHUB_OUTPUT
+            echo "kaynak=uretildi" >> $GITHUB_OUTPUT
+          fi
+
+      - name: APK derle (debug + release)
+        working-directory: twin-soccer/android
+        env:
+          TS_STORE_PASS: ${{ steps.keystore.outputs.storePass }}
+          TS_KEY_ALIAS: ${{ steps.keystore.outputs.alias }}
+          TS_KEY_PASS: ${{ steps.keystore.outputs.keyPass }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug assembleRelease \
+            -Pandroid.injected.signing.store.file=$PWD/app/twin-soccer.keystore \
+            -Pandroid.injected.signing.store.password=$TS_STORE_PASS \
+            -Pandroid.injected.signing.key.alias=$TS_KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$TS_KEY_PASS
+
+      - name: APK'ları topla
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/debug/app-debug.apk out/TwinSoccer-debug.apk
+          cp android/app/build/outputs/apk/release/*.apk out/TwinSoccer-release.apk
+          ls -la out
+
+      - name: Artefaktları yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: TwinSoccer-APK
+          path: twin-soccer/out/*.apk
+          retention-days: 30
+
+      - name: Sürüm yayınla
+        if: github.ref_name == 'claude/futbol-game-development-d1ygvy' || github.ref_name == 'main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-v1.${{ github.run_number }}
+          name: Twin Soccer APK 1.${{ github.run_number }}
+          body: |
+            **Twin Soccer** — tek dosyalık offline futbol oyunu, Android paketi.
+
+            - `TwinSoccer-release.apk` → normal kurulum (imzalı, optimize)
+            - `TwinSoccer-debug.apk` → sorun giderme sürümü
+
+            Kurulum: APK'yı telefona indir, "bilinmeyen kaynaklara izin ver" deyip aç.
+            Android 5.1 (API 22) ve üzeri tüm cihazlarla uyumludur, tek evrensel APK.
+          files: twin-soccer/out/*.apk
+          fail_on_unmatched_files: true

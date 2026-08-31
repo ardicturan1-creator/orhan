@@ -1,0 +1,509 @@
+@import "tailwindcss";
+
+/* =====================================================================
+   TWIN SOCCER — ARAYÜZ TASARIM SİSTEMİ
+   Modern konsol futbol oyunlarının arayüz DİLİ örnek alınmıştır:
+   çok koyu zemin, köşesi kırpılmış (chamfered) paneller, ince camsı
+   yüzeyler, elektrik yeşili/camgöbeği vurgu, sıkı ve kalın tipografi.
+   Hiçbir markaya ait logo, font, renk kodu veya görsel KOPYALANMAMIŞTIR.
+   ===================================================================== */
+
+@theme {
+  --color-ts-bg: #04070c;
+  --color-ts-bg2: #080e18;
+  --color-ts-panel: #0b1320;
+  --color-ts-neon: #2bf5a0;
+  --color-ts-neon2: #0bb673;
+  --color-ts-ice: #6ee7ff;
+  --color-ts-gold: #ffc93c;
+  --color-ts-gem: #59d8ff;
+  --color-ts-danger: #ff4d5e;
+  --color-ts-warn: #ffa63d;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #04070c;
+  color: #e9f4ff;
+  font-family: "Segoe UI Variable", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-synthesis-weight: none;
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+canvas {
+  display: block;
+  touch-action: none;
+}
+
+/* ---------------- başlık tipografisi ---------------- */
+.tsx-title {
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  line-height: 1.06;
+}
+.tsx-kicker {
+  font-weight: 800;
+  font-size: 8px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: #5d7893;
+}
+
+/* ---------------- kaydırma çubukları ---------------- */
+.sc::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.sc::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+.sc::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #2bf5a0, #0bb673);
+  border-radius: 99px;
+}
+.sc {
+  scrollbar-width: thin;
+  scrollbar-color: #17a06a rgba(255, 255, 255, 0.04);
+}
+
+/* ---------------- paneller (köşesi kırpılmış) ---------------- */
+.panel,
+.panel-hi,
+.panel-gold {
+  position: relative;
+  --chamfer: 11px;
+  clip-path: polygon(
+    var(--chamfer) 0,
+    100% 0,
+    100% calc(100% - var(--chamfer)),
+    calc(100% - var(--chamfer)) 100%,
+    0 100%,
+    0 var(--chamfer)
+  );
+}
+.panel {
+  background:
+    linear-gradient(147deg, rgba(29, 48, 74, 0.62) 0%, rgba(9, 16, 27, 0.9) 46%, rgba(6, 11, 19, 0.94) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 26px -16px #000;
+}
+.panel-hi {
+  background:
+    linear-gradient(147deg, rgba(18, 74, 56, 0.66) 0%, rgba(7, 24, 20, 0.92) 52%, rgba(4, 12, 12, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 26px -10px rgba(43, 245, 160, 0.45);
+}
+.panel-gold {
+  background:
+    linear-gradient(147deg, rgba(94, 68, 12, 0.66) 0%, rgba(28, 20, 4, 0.92) 52%, rgba(14, 10, 2, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 0 26px -10px rgba(255, 201, 60, 0.5);
+}
+/* kırpılmış köşede kenarlık taklidi: üstte ince ışık çizgisi */
+.panel::before,
+.panel-hi::before,
+.panel-gold::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(43, 245, 160, 0.55), transparent);
+  opacity: 0.5;
+}
+.panel-gold::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 201, 60, 0.7), transparent);
+}
+.hair {
+  border-top: 1px solid rgba(120, 170, 220, 0.12);
+}
+
+/* ---------------- butonlar ---------------- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 15px;
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 0;
+  border-radius: 3px;
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+  transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+.btn-primary {
+  background: linear-gradient(160deg, #4dffb4 0%, #17c778 48%, #069255 100%);
+  color: #032015;
+  box-shadow: 0 8px 20px -10px rgba(43, 245, 160, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.btn-gold {
+  background: linear-gradient(160deg, #ffe27a 0%, #ffc93c 48%, #cf8f06 100%);
+  color: #2a1c00;
+  box-shadow: 0 8px 20px -10px rgba(255, 201, 60, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.btn-diamond {
+  background: linear-gradient(160deg, #a5f2ff 0%, #38bdf8 48%, #0d7ea8 100%);
+  color: #001b26;
+  box-shadow: 0 8px 20px -10px rgba(89, 216, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.btn-dark {
+  background: linear-gradient(160deg, rgba(45, 70, 100, 0.92), rgba(11, 19, 32, 0.96));
+  color: #d9ecff;
+  box-shadow: inset 0 0 0 1px rgba(130, 180, 230, 0.22);
+}
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.045);
+  color: #a9c4dc;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.btn-danger {
+  background: linear-gradient(160deg, #ff8a95 0%, #e0313f 50%, #91101c 100%);
+  color: #2b0308;
+  box-shadow: 0 8px 20px -10px rgba(255, 77, 94, 0.9);
+}
+
+/* parlama süpürmesi */
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(102deg, transparent 34%, rgba(255, 255, 255, 0.42) 50%, transparent 66%);
+  transform: translateX(-130%);
+  animation: shineSweep 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+@keyframes shineSweep {
+  0%,
+  58% {
+    transform: translateX(-130%);
+  }
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+/* ---------------- küçük bileşenler ---------------- */
+.tag {
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 2px;
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+}
+.chip {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ---------------- sol rota ---------------- */
+.rail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  font-size: 7.5px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #56718c;
+  position: relative;
+  transition: color 0.14s ease, background 0.14s ease;
+  cursor: pointer;
+}
+.rail-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 3px;
+  background: transparent;
+  transition: background 0.16s ease;
+}
+.rail-item-on {
+  color: #eafff5;
+  background: linear-gradient(90deg, rgba(43, 245, 160, 0.22), rgba(43, 245, 160, 0));
+}
+.rail-item-on::before {
+  background: linear-gradient(180deg, #6bffc4, #0bb673);
+  box-shadow: 0 0 12px rgba(43, 245, 160, 0.9);
+}
+
+/* ---------------- kaydırıcılar ---------------- */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  background: transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 5px;
+  background: linear-gradient(90deg, #2bf5a0 0%, #2bf5a0 var(--p, 50%), rgba(255, 255, 255, 0.1) var(--p, 50%));
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 18px;
+  margin-top: -6px;
+  background: linear-gradient(180deg, #eafff3, #9df3cb);
+  clip-path: polygon(50% 0, 100% 26%, 100% 74%, 50% 100%, 0 74%, 0 26%);
+  box-shadow: 0 0 12px rgba(43, 245, 160, 0.75);
+}
+input[type="range"]::-moz-range-track {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 16px;
+  border: 0;
+  background: #eafff3;
+}
+
+/* ---------------- animasyonlar ---------------- */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-up {
+  animation: fadeUp 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  68% {
+    transform: scale(1.035);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.anim-pop {
+  animation: popIn 0.28s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+@keyframes floatY {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+.anim-float {
+  animation: floatY 2.6s ease-in-out infinite;
+}
+@keyframes rotatePhone {
+  0%,
+  25% {
+    transform: rotate(0deg);
+  }
+  60%,
+  100% {
+    transform: rotate(-90deg);
+  }
+}
+.anim-rotate {
+  animation: rotatePhone 1.7s ease-in-out infinite;
+}
+@keyframes goalFlash {
+  0% {
+    opacity: 0;
+    transform: scale(0.35) skewX(-12deg);
+  }
+  16% {
+    opacity: 1;
+    transform: scale(1.12) skewX(-12deg);
+  }
+  30% {
+    transform: scale(1) skewX(-12deg);
+  }
+  84% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06) skewX(-12deg);
+  }
+}
+.anim-goal {
+  animation: goalFlash 2.6s ease-out both;
+}
+@keyframes glowPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 12px -2px rgba(255, 201, 60, 0.42);
+  }
+  50% {
+    box-shadow: 0 0 30px 2px rgba(255, 201, 60, 0.9);
+  }
+}
+.anim-glow {
+  animation: glowPulse 2s ease-in-out infinite;
+}
+@keyframes glowRing {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(43, 245, 160, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(43, 245, 160, 0);
+  }
+}
+.anim-ring {
+  animation: glowRing 2s ease-out infinite;
+}
+
+.txt-neon {
+  background: linear-gradient(180deg, #ffffff 0%, #9dffd4 42%, #14b97a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 12px rgba(43, 245, 160, 0.3));
+  letter-spacing: -0.01em;
+}
+.txt-ice {
+  background: linear-gradient(180deg, #ffffff, #9de9ff 55%, #2091c0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.no-sel {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------------- sahne zemini ---------------- */
+.app-bg {
+  background:
+    radial-gradient(1100px 620px at 88% -14%, rgba(11, 182, 115, 0.16), transparent 60%),
+    radial-gradient(900px 520px at 2% 108%, rgba(56, 189, 248, 0.13), transparent 58%),
+    linear-gradient(180deg, #060b13 0%, #04070c 100%);
+}
+/* ince tarama çizgileri — panel dokusu */
+.scan {
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.022) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+.lift {
+  transition: transform 0.14s ease, filter 0.14s ease;
+}
+.lift:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+.lift:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* ---------------- oyuncu kartı (FUT tarzı DEĞİL, özgün) ---------------- */
+.pcard {
+  position: relative;
+  background: linear-gradient(160deg, rgba(30, 52, 78, 0.9), rgba(7, 13, 22, 0.96));
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+  box-shadow: inset 0 0 0 1px rgba(140, 190, 240, 0.16);
+}
+.pcard-hi {
+  background: linear-gradient(160deg, rgba(20, 84, 62, 0.92), rgba(5, 18, 15, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(43, 245, 160, 0.45), 0 0 22px -10px rgba(43, 245, 160, 0.8);
+}
+.ovr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  line-height: 1;
+  clip-path: polygon(50% 0, 100% 24%, 100% 76%, 50% 100%, 0 76%, 0 24%);
+}
+
+/* ---------------- alanlar ---------------- */
+.field {
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  border: 0;
+  border-radius: 2px;
+  color: #eaf7ff;
+  outline: none;
+  transition: box-shadow 0.15s ease;
+}
+.field:focus {
+  box-shadow: inset 0 0 0 1px rgba(43, 245, 160, 0.7), 0 0 0 3px rgba(43, 245, 160, 0.12);
+}
+.swatch {
+  height: 20px;
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  transition: transform 0.1s ease;
+}
+.swatch:active {
+  transform: scale(0.9);
+}
+.keypad-key {
+  padding: 10px 0;
+  font-size: 16px;
+  font-weight: 900;
+  background: linear-gradient(180deg, rgba(46, 70, 100, 0.55), rgba(12, 20, 32, 0.75));
+  box-shadow: inset 0 0 0 1px rgba(150, 200, 255, 0.16);
+  color: #e8f4ff;
+}
+
+/* HUD üst bandı */
+.hud-bar {
+  background: linear-gradient(180deg, rgba(4, 8, 14, 0.9), rgba(4, 8, 14, 0.55));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 14px 100%);
+  box-shadow: inset 0 -1px 0 rgba(43, 245, 160, 0.25);
+}
