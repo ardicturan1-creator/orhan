@@ -205,7 +205,7 @@ export class Renderer3D {
     this.updateCamera(o);
     this.drawSky(o);
     this.drawBowl(o);
-    this.drawStands(o, true);
+    this.drawStands(o);
     this.drawPitch(o);
     this.drawLines(o);
     this.drawFloodPools(o);
@@ -287,7 +287,8 @@ export class Renderer3D {
     return out;
   }
 
-  private drawStands(o: RenderOpts, far: boolean): void {
+  /** Tribünler — yalnızca kameradan UZAKTA olanlar çizilir (saha asla kapanmaz). */
+  private drawStands(o: RenderOpts): void {
     const ctx = this.ctx!;
     const quads = this.standQuads(o).sort((a, b) => b.depth - a.depth);
     const pitchDepth = this.toCam(0, 0, 0).cz;
@@ -296,9 +297,7 @@ export class Renderer3D {
     const camSide = this.pos.y >= 0 ? 1 : -1;
     for (const q of quads) {
       if (Math.abs(q.side) === 1 && q.side === camSide) continue;
-      // Kameradan daha yakındaki tribünler HİÇ çizilmez → saha asla kapanmaz.
       if (q.depth <= pitchDepth) continue;
-      void far;
       const lv = o.levels.stands;
       const rows = 3 + lv;
       // taban bandı

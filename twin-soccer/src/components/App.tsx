@@ -39,7 +39,15 @@ export function App(): React.JSX.Element {
   const [settings, setSettings] = React.useState<MatchSettings>(() => {
     try {
       const raw = localStorage.getItem("twin_soccer_settings");
-      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      if (raw) {
+        const saved = JSON.parse(raw) as Partial<MatchSettings>;
+        // `minutes` artık GÖSTERİLEN süredir ve daima 90'dır; eski kayıtlarda 3-10
+        // arası bir değer duruyordu ve saat 15 dakikada yalnızca 4'e kadar sayardı.
+        const realMinutes = typeof saved.realMinutes === "number" && saved.realMinutes >= 3
+          ? saved.realMinutes
+          : DEFAULT_SETTINGS.realMinutes;
+        return { ...DEFAULT_SETTINGS, ...saved, minutes: 90, realMinutes };
+      }
     } catch { /* yoksay */ }
     return DEFAULT_SETTINGS;
   });
@@ -47,6 +55,7 @@ export function App(): React.JSX.Element {
   const [eng, setEng] = React.useState<MatchEngine | null>(null);
   const [matchMeta, setMatchMeta] = React.useState<{ homeId: string; awayId: string; cupMode: boolean; userTeam: 0 | 1 } | null>(null);
   const [frozen, setFrozen] = React.useState(false);
+  const [simProg, setSimProg] = React.useState(0);
   const [reward, setReward] = React.useState<{ lines: string[]; title: string } | null>(null);
   const [, force] = React.useState(0);
   const simRef = React.useRef<number | null>(null);
@@ -252,17 +261,21 @@ export function App(): React.JSX.Element {
   const simMatch = (): void => {
     if (!eng) return;
     setFrozen(true);
+    setSimProg(0);
     const chunk = (): void => {
       const t0 = performance.now();
-      while (eng.phase !== "fulltime" && eng.phase !== "pens" && performance.now() - t0 < 80) {
+      // 90 dakikalık maç 54.000 adımdır; parça başına daha uzun çalışıp
+      // arada tarayıcıya nefes aldırıyoruz (arayüz donmuyor, ilerleme görünüyor).
+      while (eng.phase !== "fulltime" && eng.phase !== "pens" && performance.now() - t0 < 140) {
         if (eng.phase === "halftime") eng.resumeSecondHalf();
-        eng.step();
-        eng.step();
+        eng.step(); eng.step(); eng.step(); eng.step();
       }
       if (eng.phase === "fulltime" || eng.phase === "pens") {
+        setSimProg(100);
         setFrozen(false);
         return;
       }
+      setSimProg(Math.min(99, Math.round((eng.clock / Math.max(1, eng.minutes)) * 100)));
       setAmbienceLevel(0.4);
       simRef.current = window.setTimeout(chunk, 0);
     };
@@ -315,8 +328,9 @@ export function App(): React.JSX.Element {
         />
         {frozen && (
           <div className="fixed inset-0 z-[60] bg-black/70 flex flex-col items-center justify-center pointer-events-none">
-            <div className="text-[13px] font-black txt-neon mb-2">MAÇ SİMÜLE EDİLİYOR…</div>
-            <div className="w-[220px]"><Bar v={70} color="emerald" h={6} /></div>
+            <div className="text-[14px] tsx-title txt-neon mb-2">MAÇ SİMÜLE EDİLİYOR</div>
+            <div className="w-[260px]"><Bar v={simProg} color="emerald" h={7} /></div>
+            <div className="text-[10px] text-slate-400 mt-1.5 tabular-nums">%{simProg}</div>
           </div>
         )}
       </>
