@@ -11,6 +11,9 @@ on:
       - "twin-soccer/**"
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 defaults:
   run:
     working-directory: twin-soccer
@@ -56,11 +59,11 @@ jobs:
       - name: Grant execute permission to gradlew
         run: chmod +x android/gradlew
 
-      - name: Build debug APK (installable on any device, no signing required)
+      - name: Build signed debug APK
         working-directory: twin-soccer/android
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Build unsigned release APK (smaller, optimized)
+      - name: Build signed release APK
         working-directory: twin-soccer/android
         run: ./gradlew assembleRelease --stacktrace
 
@@ -70,8 +73,22 @@ jobs:
           name: twin-soccer-debug-apk
           path: twin-soccer/android/app/build/outputs/apk/debug/*.apk
 
-      - name: Upload unsigned release APK
+      - name: Upload signed release APK
         uses: actions/upload-artifact@v4
         with:
-          name: twin-soccer-release-unsigned-apk
+          name: twin-soccer-release-apk
           path: twin-soccer/android/app/build/outputs/apk/release/*.apk
+
+      - name: Publish APKs as a GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: "Twin Soccer APK (latest build)"
+          body: |
+            Automatically built from commit ${{ github.sha }}.
+            Both APKs are signed and installable on any Android device (minSdk 22+).
+          make_latest: true
+          files: |
+            twin-soccer/android/app/build/outputs/apk/debug/*.apk
+            twin-soccer/android/app/build/outputs/apk/release/*.apk
