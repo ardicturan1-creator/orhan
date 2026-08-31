@@ -1,0 +1,40 @@
+{
+  "name": "twin-soccer",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx tools/crypto.test.ts",
+    "sim": "tsx tools/sim.ts",
+    "shots": "node tools/shoot.mjs",
+    "icons": "python3 tools/make-icons.py",
+    "sync:android": "npm run build && cap sync android",
+    "apk": "npm run sync:android && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "clsx": "2.1.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "tailwind-merge": "3.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.1",
+    "@tailwindcss/vite": "4.1.17",
+    "@types/node": "22.19.17",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
+    "playwright": "^1.49.1",
+    "tailwindcss": "4.1.17",
+    "tsx": "^4.19.2",
+    "typescript": "5.9.3",
+    "vite": "7.3.2",
+    "vite-plugin-singlefile": "2.3.0"
+  }
+}
