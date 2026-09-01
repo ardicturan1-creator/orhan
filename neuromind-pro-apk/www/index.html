@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NeuroMind PRO - İzokronik Sistem</title>
+    <style>
+        :root {
+            --bg-color: #07070a;
+            --card-bg: #11111a;
+            --text-main: #e2e8f0;
+
+            /* Uyku Modu Renkleri (Derin Mor) */
+            --sleep-primary: #a855f7;
+            --sleep-glow: rgba(168, 85, 247, 0.5);
+            --sleep-bg: #3b0764;
+
+            /* Odak Modu Renkleri (Elektrik Turuncu) */
+            --focus-primary: #f59e0b;
+            --focus-glow: rgba(245, 158, 11, 0.6);
+            --focus-bg: #b45309;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background-color: var(--bg-color); color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            min-height: 100vh; margin: 0; padding: 20px; text-align: center; overflow: hidden;
+            transition: background-color 0.5s;
+        }
+
+        h1 { font-size: 22px; font-weight: 700; margin-top: 10px; letter-spacing: 1px; }
+        #status-text { font-size: 13px; color: #94a3b8; max-width: 320px; min-height: 40px; margin-bottom: 20px; }
+
+        /* Mod Seçim Kartları */
+        .mode-container { display: flex; gap: 15px; width: 100%; max-width: 340px; z-index: 10; }
+
+        .mode-card {
+            flex: 1; padding: 15px 10px; border-radius: 16px; background: var(--card-bg);
+            border: 2px solid transparent; cursor: pointer; transition: 0.3s;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+        }
+
+        .mode-card.active-sleep { border-color: var(--sleep-primary); background: rgba(59, 7, 100, 0.4); }
+        .mode-card.active-focus { border-color: var(--focus-primary); background: rgba(180, 83, 9, 0.3); }
+
+        .mode-icon { font-size: 26px; }
+        .mode-title { font-size: 14px; font-weight: 600; }
+
+        /* Dinamik Animasyon Küresi */
+        .pulse-container {
+            position: relative; width: 180px; height: 180px;
+            display: flex; align-items: center; justify-content: center; margin: 40px 0;
+        }
+
+        .core-sphere {
+            width: 90px; height: 90px; border-radius: 50%; z-index: 2; transition: all 0.5s ease;
+        }
+
+        /* Uyku Küresi Stili */
+        .sleep-sphere { background: radial-gradient(circle, var(--sleep-primary) 0%, var(--sleep-bg) 100%); box-shadow: 0 0 50px var(--sleep-glow); }
+        /* Odak Küresi Stili */
+        .focus-sphere { background: radial-gradient(circle, #fef08a 0%, var(--focus-primary) 80%, var(--focus-bg) 100%); box-shadow: 0 0 50px var(--focus-glow); }
+
+        .ripple {
+            position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            border: 3px solid transparent; animation: none;
+        }
+
+        /* Animasyon Hızları */
+        .ripple-sleep { border-color: var(--sleep-glow); animation: ripple-slow 3s infinite ease-out; }
+        .ripple-focus { border-color: var(--focus-glow); animation: ripple-fast 0.6s infinite ease-out; }
+
+        @keyframes ripple-slow { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+        @keyframes ripple-fast { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
+
+        /* Sayac ve Buton */
+        #timer { font-size: 48px; font-weight: 800; letter-spacing: 2px; margin-bottom: 15px; font-variant-numeric: tabular-nums; }
+
+        .main-btn {
+            width: 100%; max-width: 340px; padding: 20px; border-radius: 16px; border: none;
+            color: white; font-size: 18px; font-weight: 800; cursor: pointer; transition: 0.3s;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        .btn-sleep { background: var(--sleep-primary); box-shadow: 0 10px 20px rgba(168, 85, 247, 0.2); }
+        .btn-focus { background: var(--focus-primary); color: #000; box-shadow: 0 10px 20px rgba(245, 158, 11, 0.2); }
+
+        .main-btn:active { transform: scale(0.96); }
+        .main-btn.stop { background: #991b1b !important; color: white !important; box-shadow: 0 10px 20px rgba(153, 27, 27, 0.3) !important; }
+
+    </style>
+</head>
+<body>
+
+    <div>
+        <h1>NEUROMIND PRO</h1>
+        <div id="status-text">Hoparlör modunda (İzokronik). Bir hedef seçin.</div>
+    </div>
+
+    <!-- Mod Seçimi -->
+    <div class="mode-container">
+        <div class="mode-card active-sleep" id="cardSleep" onclick="selectMode('sleep')">
+            <span class="mode-icon">🌌</span>
+            <span class="mode-title">Ağır Uyku</span>
+        </div>
+        <div class="mode-card" id="cardFocus" onclick="selectMode('focus')">
+            <span class="mode-icon">⚡</span>
+            <span class="mode-title">Hiper-Odak</span>
+        </div>
+    </div>
+
+    <!-- Görsel Nabız -->
+    <div class="pulse-container">
+        <div class="ripple" id="rippleAnim"></div>
+        <div class="core-sphere sleep-sphere" id="coreSphere"></div>
+    </div>
+
+    <div style="width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 10;">
+        <div id="timer">20:00</div>
+        <button class="main-btn btn-sleep" id="actionBtn" onclick="toggleSystem()">SİSTEMİ BAŞLAT</button>
+    </div>
+
+    <script>
+        let currentMode = 'sleep';
+        let isRunning = false;
+        let audioCtx, masterGain, lfo, carrier1, carrier2, noiseNode;
+        let timerInterval, remainingSeconds;
+
+        function selectMode(mode) {
+            if (isRunning) return;
+            currentMode = mode;
+
+            const cardSleep = document.getElementById('cardSleep');
+            const cardFocus = document.getElementById('cardFocus');
+            const sphere = document.getElementById('coreSphere');
+            const btn = document.getElementById('actionBtn');
+            const timer = document.getElementById('timer');
+            const statusText = document.getElementById('status-text');
+
+            if (mode === 'sleep') {
+                cardSleep.className = 'mode-card active-sleep';
+                cardFocus.className = 'mode-card';
+                sphere.className = 'core-sphere sleep-sphere';
+                btn.className = 'main-btn btn-sleep';
+                timer.innerText = "20:00";
+                statusText.innerText = "Derin Sub-bass ve Delta İzokronik vuruşları ile bedeni ağırlaştırır.";
+            } else {
+                cardFocus.className = 'mode-card active-focus';
+                cardSleep.className = 'mode-card';
+                sphere.className = 'core-sphere focus-sphere';
+                btn.className = 'main-btn btn-focus';
+                timer.innerText = "25:00";
+                statusText.innerText = "Gamma İzokronik vuruşları ve pembe gürültü ile zihni şoka sokar ve uyandırır.";
+            }
+        }
+
+        function createEnvironmentNoise(type) {
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+            noiseNode = audioCtx.createBufferSource();
+            noiseNode.buffer = noiseBuffer;
+            noiseNode.loop = true;
+
+            const filter = audioCtx.createBiquadFilter();
+            if (type === 'sleep') {
+                filter.type = 'lowpass';
+                filter.frequency.value = 300; // Okyanus Uğultusu
+            } else {
+                filter.type = 'bandpass';
+                filter.frequency.value = 1500; // Keskin Rüzgar
+                filter.Q.value = 0.5;
+            }
+
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.value = type === 'sleep' ? 0.8 : 0.6;
+
+            noiseNode.connect(filter);
+            filter.connect(noiseGain);
+            return noiseGain;
+        }
+
+        function toggleSystem() {
+            if (isRunning) stopSystem();
+            else startSystem();
+        }
+
+        function startSystem() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const now = audioCtx.currentTime;
+
+            // Master Çıkış (Fade In)
+            masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(0, now);
+            const maxVol = currentMode === 'sleep' ? 0.7 : 0.5;
+            masterGain.gain.linearRampToValueAtTime(maxVol, now + 4);
+            masterGain.connect(audioCtx.destination);
+
+            // AM Sentezi için LFO (Nabız Vurucu)
+            const lfoGain = audioCtx.createGain();
+            lfoGain.gain.value = 0;
+            lfoGain.connect(masterGain);
+
+            lfo = audioCtx.createOscillator();
+            lfo.type = 'sine';
+
+            const lfoAmp = audioCtx.createGain();
+            lfoAmp.gain.value = 1;
+            lfo.connect(lfoAmp).connect(lfoGain.gain);
+
+            carrier1 = audioCtx.createOscillator();
+            carrier2 = audioCtx.createOscillator();
+            const c2Gain = audioCtx.createGain();
+            carrier2.connect(c2Gain);
+
+            if (currentMode === 'sleep') {
+                remainingSeconds = 1200; // 20 dk
+
+                // LFO: 7 Hz -> 1.5 Hz (Delta)
+                lfo.frequency.setValueAtTime(7, now);
+                lfo.frequency.linearRampToValueAtTime(1.5, now + 900);
+
+                // Taşıyıcılar: Ohm ve Sub-Bass
+                carrier1.type = 'sine';
+                carrier1.frequency.value = 136.1;
+                carrier2.type = 'triangle';
+                carrier2.frequency.value = 68.05;
+                c2Gain.gain.value = 0.6;
+
+                // Kapanış Fade Out
+                masterGain.gain.setValueAtTime(maxVol, now + 1140);
+                masterGain.gain.linearRampToValueAtTime(0.001, now + 1200);
+
+            } else {
+                remainingSeconds = 1500; // 25 dk
+
+                // LFO: 15 Hz -> 25 Hz (Gamma)
+                lfo.frequency.setValueAtTime(15, now);
+                lfo.frequency.linearRampToValueAtTime(25, now + 180);
+
+                // Taşıyıcılar: Zihin açıcı tiz frekanslar
+                carrier1.type = 'sine';
+                carrier1.frequency.value = 315;
+                carrier2.type = 'triangle';
+                carrier2.frequency.value = 630;
+                c2Gain.gain.value = 0.3;
+
+                // Kapanış Fade Out
+                masterGain.gain.setValueAtTime(maxVol, now + 1490);
+                masterGain.gain.linearRampToValueAtTime(0.001, now + 1500);
+            }
+
+            // Gürültüyü Ekle
+            const noise = createEnvironmentNoise(currentMode);
+
+            // Tüm Sesleri LFO'nun Kazancına (Nabıza) Bağla
+            carrier1.connect(lfoGain);
+            c2Gain.connect(lfoGain);
+            noise.connect(lfoGain);
+
+            // Başlat
+            lfo.start();
+            carrier1.start();
+            carrier2.start();
+            noiseNode.start();
+
+            // UI Güncelleme
+            isRunning = true;
+            document.getElementById('actionBtn').innerText = "SİSTEMİ DURDUR";
+            document.getElementById('actionBtn').classList.add('stop');
+
+            const ripple = document.getElementById('rippleAnim');
+            ripple.className = `ripple ${currentMode === 'sleep' ? 'ripple-sleep' : 'ripple-focus'}`;
+
+            document.getElementById('coreSphere').style.transform = 'scale(1.15)';
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            remainingSeconds--;
+            let mins = Math.floor(remainingSeconds / 60);
+            let secs = remainingSeconds % 60;
+            document.getElementById('timer').innerText =
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+            if (remainingSeconds <= 0) stopSystem();
+        }
+
+        function stopSystem() {
+            if (audioCtx) {
+                masterGain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+                setTimeout(() => { audioCtx.close(); audioCtx = null; }, 1600);
+            }
+            clearInterval(timerInterval);
+            isRunning = false;
+
+            document.getElementById('rippleAnim').className = 'ripple';
+            document.getElementById('coreSphere').style.transform = 'scale(1)';
+            selectMode(currentMode); // Butonları ve sayacı sıfırla
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+name: Build NeuroMind PRO APK
+
+on:
+  push:
+    branches:
+      - claude/neuromind-apk-error-cf7n4h
+    paths:
+      - 'neuromind-pro-apk/**'
+      - '.github/workflows/build-neuromind-pro-apk.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: neuromind-pro-apk
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Sync Capacitor Android project
+        run: npx cap sync android
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Build debug APK
+        working-directory: neuromind-pro-apk/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: neuromind-pro-debug-apk
+          path: neuromind-pro-apk/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish APK into repo
+        working-directory: .
+        run: |
+          cp neuromind-pro-apk/android/app/build/outputs/apk/debug/app-debug.apk neuromind-pro-debug.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add neuromind-pro-debug.apk
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish built NeuroMind PRO debug APK [skip ci]"
+            git push
+          fi
