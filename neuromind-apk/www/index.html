@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NeuroMind - Akıllı Mod</title>
+    <style>
+        :root {
+            --bg-color: #090d16;
+            --card-bg: #131c2e;
+            --accent-sleep: #3b82f6;
+            --accent-wake: #f59e0b;
+            --text-main: #f1f5f9;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background-color: var(--bg-color); color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            min-height: 100vh; margin: 0; padding: 20px; text-align: center;
+        }
+
+        h1 { font-size: 22px; font-weight: 600; margin-top: 10px; opacity: 0.9; }
+
+        /* Otomatik Mod Seçim Kartları */
+        .mode-container {
+            display: flex; gap: 12px; width: 100%; max-width: 360px; margin-top: 10px;
+        }
+
+        .mode-card {
+            flex: 1; padding: 18px 10px; border-radius: 16px; background: var(--card-bg);
+            border: 2px solid transparent; cursor: pointer; transition: all 0.3s ease;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+        }
+
+        .mode-card.active-sleep { border-color: var(--accent-sleep); background: #1e293b; }
+        .mode-card.active-wake { border-color: var(--accent-wake); background: #2a2015; }
+
+        .mode-icon { font-size: 28px; }
+        .mode-title { font-size: 14px; font-weight: 600; }
+
+        /* Merkez Görsel Nabız Küresi */
+        .sphere-container {
+            position: relative; display: flex; align-items: center; justify-content: center;
+            margin: 30px 0;
+        }
+
+        .sphere {
+            width: 140px; height: 140px; border-radius: 50%;
+            background: radial-gradient(circle, #3b82f6 0%, #1d4ed8 100%);
+            box-shadow: 0 0 50px rgba(59, 130, 246, 0.4);
+            transition: all 0.5s ease;
+        }
+
+        .sphere.wake-mode {
+            background: radial-gradient(circle, #f59e0b 0%, #d97706 100%);
+            box-shadow: 0 0 50px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Animasyonlar */
+        .anim-sleep { animation: breathe 8s infinite ease-in-out; }
+        .anim-wake { animation: pulse 1.5s infinite ease-in-out; }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.4); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 1; }
+        }
+
+        /* Sayac ve Durum Metni */
+        #timer { font-size: 38px; font-weight: 700; letter-spacing: 2px; margin-bottom: 5px; }
+        #status-text { font-size: 13px; color: #94a3b8; max-width: 300px; min-height: 38px; line-height: 1.4; }
+
+        /* Ana Başlat Butonu */
+        .main-btn {
+            width: 100%; max-width: 360px; padding: 18px; border-radius: 30px; border: none;
+            background: var(--accent-sleep); color: white; font-size: 18px; font-weight: 700;
+            cursor: pointer; transition: transform 0.2s, background 0.3s; margin-bottom: 15px;
+        }
+
+        .main-btn:active { transform: scale(0.97); }
+        .main-btn.stop { background: #dc2626; }
+
+    </style>
+</head>
+<body>
+
+    <div>
+        <h1>NeuroMind Auto</h1>
+        <div id="status-text">Ne yapmak istediğinizi seçin.</div>
+    </div>
+
+    <div class="mode-container">
+        <div class="mode-card active-sleep" id="cardSleep" onclick="selectMode('sleep')">
+            <span class="mode-icon">🌙</span>
+            <span class="mode-title">Uyumak İstiyorum</span>
+        </div>
+        <div class="mode-card" id="cardWake" onclick="selectMode('wake')">
+            <span class="mode-icon">⚡</span>
+            <span class="mode-title">Uyanık Kal</span>
+        </div>
+    </div>
+
+    <div class="sphere-container">
+        <div class="sphere" id="sphere"></div>
+    </div>
+
+    <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+        <div id="timer">20:00</div>
+        <button class="main-btn" id="actionBtn" onclick="toggleSystem()">BAŞLAT</button>
+    </div>
+
+    <script>
+        let currentMode = 'sleep'; // 'sleep' veya 'wake'
+        let isRunning = false;
+        let audioCtx, solOsi, sagOsi, noiseNode, gainNode;
+        let timerInterval, remainingSeconds;
+
+        function selectMode(mode) {
+            if(isRunning) return; // Çalışırken mod değiştirilmesin
+            currentMode = mode;
+
+            const cardSleep = document.getElementById('cardSleep');
+            const cardWake = document.getElementById('cardWake');
+            const sphere = document.getElementById('sphere');
+            const timer = document.getElementById('timer');
+            const actionBtn = document.getElementById('actionBtn');
+            const statusText = document.getElementById('status-text');
+
+            if (mode === 'sleep') {
+                cardSleep.className = 'mode-card active-sleep';
+                cardWake.className = 'mode-card';
+                sphere.className = 'sphere';
+                actionBtn.style.background = 'var(--accent-sleep)';
+                timer.innerText = "20:00";
+                statusText.innerText = "Otomatik Mod: Beyin 10 Hz'den 2 Hz Delta frekansına düşürülerek derin uykuya alınacak.";
+            } else {
+                cardWake.className = 'mode-card active-wake';
+                cardSleep.className = 'mode-card';
+                sphere.className = 'sphere wake-mode';
+                actionBtn.style.background = 'var(--accent-wake)';
+                timer.innerText = "25:00";
+                statusText.innerText = "Otomatik Mod: Beyin 18 Hz Beta/Gamma frekansına çekilerek yüksek odak ve uyanıklık sağlanacak.";
+            }
+        }
+
+        function createNoise(type) {
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            noiseNode = audioCtx.createBufferSource();
+            noiseNode.buffer = noiseBuffer;
+            noiseNode.loop = true;
+
+            const filter = audioCtx.createBiquadFilter();
+
+            if (type === 'sleep') {
+                // Derin Kahverengi Gürültü (Uyku için)
+                filter.type = 'lowpass';
+                filter.frequency.value = 350;
+            } else {
+                // Pembe/Yüksek Gürültü (Uyanıklık/Netlik için)
+                filter.type = 'bandpass';
+                filter.frequency.value = 1000;
+            }
+
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.value = type === 'sleep' ? 0.3 : 0.15;
+
+            noiseNode.connect(filter);
+            filter.connect(noiseGain);
+            noiseGain.connect(gainNode);
+            noiseNode.start();
+        }
+
+        function toggleSystem() {
+            if (isRunning) {
+                stopSystem();
+            } else {
+                startSystem();
+            }
+        }
+
+        function startSystem() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const now = audioCtx.currentTime;
+
+            gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(0.2, now);
+            gainNode.connect(audioCtx.destination);
+
+            solOsi = audioCtx.createOscillator();
+            sagOsi = audioCtx.createOscillator();
+            const solPanner = audioCtx.createStereoPanner();
+            const sagPanner = audioCtx.createStereoPanner();
+
+            solPanner.pan.value = -1;
+            sagPanner.pan.value = 1;
+
+            if (currentMode === 'sleep') {
+                // UYKU MODU AUTOMATION
+                remainingSeconds = 1200; // 20 Dakika
+
+                solOsi.frequency.value = 160;
+                sagOsi.frequency.setValueAtTime(170, now); // 10 Hz Alpha
+                // 15 dakikada 2 Hz Delta seviyesine düşür
+                sagOsi.frequency.linearRampToValueAtTime(162, now + 900);
+
+                // Son dakikalarda sesi kapat
+                gainNode.gain.setValueAtTime(0.2, now + 1140);
+                gainNode.gain.linearRampToValueAtTime(0.001, now + 1200);
+
+                createNoise('sleep');
+                document.getElementById('sphere').classList.add('anim-sleep');
+                document.getElementById('status-text').innerText = "Protokol Başladı: Kulaklığınızı takın ve gözlerinizi kapatın.";
+
+            } else {
+                // UYANIKLIK MODU AUTOMATION
+                remainingSeconds = 1500; // 25 Dakika (Pomodoro Süresi)
+
+                solOsi.frequency.value = 210;
+                sagOsi.frequency.setValueAtTime(225, now); // Başlangıç 15 Hz Beta
+                // 3 dakika içinde 18 Hz yüksek odaklanma seviyesine çıkar
+                sagOsi.frequency.linearRampToValueAtTime(228, now + 180);
+
+                createNoise('wake');
+                document.getElementById('sphere').classList.add('anim-wake');
+                document.getElementById('status-text').innerText = "Protokol Başladı: Gözleriniz açık çalışmaya odaklanabilirsiniz.";
+            }
+
+            solOsi.connect(solPanner);
+            sagOsi.connect(sagPanner);
+            solPanner.connect(gainNode);
+            sagPanner.connect(gainNode);
+
+            solOsi.start();
+            sagOsi.start();
+
+            isRunning = true;
+            document.getElementById('actionBtn').innerText = "DURDUR";
+            document.getElementById('actionBtn').classList.add('stop');
+
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            remainingSeconds--;
+            let mins = Math.floor(remainingSeconds / 60);
+            let secs = remainingSeconds % 60;
+            document.getElementById('timer').innerText =
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+            if (remainingSeconds <= 0) {
+                stopSystem();
+                document.getElementById('status-text').innerText = "Program tamamlandı.";
+            }
+        }
+
+        function stopSystem() {
+            if (audioCtx) {
+                audioCtx.close();
+                audioCtx = null;
+            }
+            clearInterval(timerInterval);
+            isRunning = false;
+
+            document.getElementById('sphere').classList.remove('anim-sleep', 'anim-wake');
+            document.getElementById('actionBtn').innerText = "BAŞLAT";
+            document.getElementById('actionBtn').classList.remove('stop');
+
+            selectMode(currentMode); // Ekranı sıfırla
+        }
+    </script>
+</body>
+</html>
