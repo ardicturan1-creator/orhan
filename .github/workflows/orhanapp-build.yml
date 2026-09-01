@@ -7,6 +7,9 @@ on:
       - '.github/workflows/orhanapp-build.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 defaults:
   run:
     working-directory: OrhanApp
@@ -40,3 +43,14 @@ jobs:
         with:
           name: orhan-debug-apk
           path: OrhanApp/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: APK'yı GitHub Release'e ekle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "orhanapp-debug-${{ github.run_number }}" \
+            app/build/outputs/apk/debug/app-debug.apk \
+            --repo "${{ github.repository }}" \
+            --title "OrhanApp Debug APK (run ${{ github.run_number }})" \
+            --notes "Otomatik debug APK derlemesi (workflow run ${{ github.run_id }})." \
+            --prerelease
